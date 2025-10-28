@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include "../inc/tm4c123gh6pm.h"
 #include "../inc/CortexM.h"
+#include "../inc/Timer0A.h"
 
 #define NVIC_EN0_INT19          0x00080000  // Interrupt 19 enable
 #define TIMER_CFG_16_BIT        0x00000004  // 16-bit timer configuration,

@@ -60,7 +60,7 @@ void DAC_Out(uint16_t code);
 // inputs:  voltage output (0 to 4095)
 // outputs: none
 //
-#define DAC_OutNonBlocking(code) SSI1_DR_R = code;     
+void DAC_Out_NB(uint16_t code);
 
 
 #endif

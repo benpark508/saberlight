@@ -39,4 +39,10 @@ void SysTick_Init(uint32_t period);
 // Executed every 20ns*(period)
 void SysTick_Handler(void);
 
+void SysTick_Stop(void);
+
+void SysTick_Start(void);
+
+void SysTick_setPeriod(uint32_t period);
+
 #endif // __SYSTICKINTS_H__

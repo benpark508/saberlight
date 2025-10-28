@@ -43,10 +43,19 @@ void SysTick_Init(uint32_t period){long sr;
   NVIC_ST_CURRENT_R = 0;      // any write to current clears it
   NVIC_SYS_PRI3_R = (NVIC_SYS_PRI3_R&0x00FFFFFF)|0x40000000; // priority 2
                               // enable SysTick with core clock and interrupts
-  NVIC_ST_CTRL_R = 0x07;
+  NVIC_ST_CTRL_R = 0;
   EndCritical(sr);
 }
 
+void SysTick_Stop(void){
+  NVIC_ST_CTRL_R = 0; // disable SysTick
+}
+void SysTick_Start(void){
+  NVIC_ST_CTRL_R = 0x07; // enable SysTick with core clock and interrupts
+} 
+void SysTick_setPeriod(uint32_t period){
+  NVIC_ST_RELOAD_R = period-1;// reload value
+}
 
 
 

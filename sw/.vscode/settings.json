@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.c": "c",
+        "cortexm.h": "c",
+        "systickints.h": "c"
+    }
+}

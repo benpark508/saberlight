@@ -395,19 +395,9 @@
               <FilePath>.\Lab7.c</FilePath>
             </File>
             <File>
-              <FileName>music.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\music.c</FilePath>
-            </File>
-            <File>
               <FileName>mailbox.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\mailbox.c</FilePath>
-            </File>
-            <File>
-              <FileName>TLV5616.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\inc\TLV5616.c</FilePath>
             </File>
             <File>
               <FileName>PLL.c</FileName>
@@ -415,24 +405,9 @@
               <FilePath>..\inc\PLL.c</FilePath>
             </File>
             <File>
-              <FileName>SysTickInts.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\inc\SysTickInts.c</FilePath>
-            </File>
-            <File>
-              <FileName>BetterSwitch.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\inc\BetterSwitch.c</FilePath>
-            </File>
-            <File>
               <FileName>GPIO_HAL.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\inc\GPIO_HAL.c</FilePath>
-            </File>
-            <File>
-              <FileName>Timer0A.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\inc\Timer0A.c</FilePath>
             </File>
             <File>
               <FileName>Unified_Port_Init.c</FileName>
@@ -440,14 +415,24 @@
               <FilePath>..\inc\Unified_Port_Init.c</FilePath>
             </File>
             <File>
-              <FileName>Timer1A.c</FileName>
+              <FileName>I2C1.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\inc\Timer1A.c</FilePath>
+              <FilePath>..\inc\I2C1.c</FilePath>
             </File>
             <File>
-              <FileName>Timer2A.c</FileName>
+              <FileName>mpu9250.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\inc\Timer2A.c</FilePath>
+              <FilePath>..\inc\mpu9250.c</FilePath>
+            </File>
+            <File>
+              <FileName>mpr121.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\mpr121.c</FilePath>
+            </File>
+            <File>
+              <FileName>SysTick.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\SysTick.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -1,14 +1,11 @@
 Dependencies for Project 'Lab7', Target 'Lab7': (DO NOT MODIFY !)
 CompilerVersion: 6240000::V6.24::ARMCLANG
 F (.\startup.s)(0x68E6D9C2)(--cpu Cortex-M4.fp.sp -g --pd "__MICROLIB SETA 1" --diag_suppress=A1950W-I.\RTE\_Lab7-IC:\Users\benpa\AppData\Local\Arm\Packs\ARM\CMSIS\6.2.0\CMSIS\Core\Include-IC:\Users\benpa\AppData\Local\Arm\Packs\Keil\LM4F_DFP\1.0.0\Device\Include--pd "__UVISION_VERSION SETA 543"--pd "LM4F120 SETA 1"--pd "_RTE_ SETA 1"--list .\startup.lst--xref -o .\startup.o--depend .\startup.d)
-F (.\Lab7.c)(0x690007ED)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./lab7.o -MMD)
-I (..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
-I (music.h)(0x68E6D9C2)
-I (..\inc\PLL.h)(0x68E6D9C2)
-I (..\inc\SysTickInts.h)(0x68E6D9C2)
-I (..\inc\TLV5616.h)(0x68E6D9C2)
+F (.\Lab7.c)(0x6901BD71)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./lab7.o -MMD)
 I (mailbox.h)(0x68E6D9C2)
-I (..\inc\BetterSwitch.h)(0x68E6D9C2)
+I (..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
+I (..\inc\PLL.h)(0x68E6D9C2)
+I (..\inc\SysTick.h)(0x68E6D9C2)
 I (..\inc\GPIO_HAL.h)(0x68E6D9C2)
 I (..\inc\hw_memmap.h)(0x68E6D9C2)
 I (..\inc\hw_gpio.h)(0x68E6D9C2)
@@ -17,35 +14,14 @@ I (..\inc\hw_sysctl.h)(0x68E6D9C2)
 I (..\inc\hw_nvic.h)(0x68E6D9C2)
 I (..\inc\..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
 I (..\inc\Unified_Port_Init.h)(0x68E6D9C2)
-I (..\inc\Timer0A.h)(0x68E6D9C2)
-F (.\music.c)(0x68E7283B)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./music.o -MMD)
-I (..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
-I (..\inc\SysTickInts.h)(0x68E6D9C2)
-I (..\inc\TLV5616.h)(0x68E6D9C2)
-I (music.h)(0x68E6D9C2)
-I (mailbox.h)(0x68E6D9C2)
-I (..\inc\Timer1A.h)(0x68E6D9C2)
-I (..\inc\Timer2A.h)(0x68E6D9C2)
+I (..\inc\I2C1.h)(0x68E6D9C2)
+I (..\inc\mpu9250.h)(0x6901BB1D)
+I (..\inc\..\inc\I2C1.h)(0x68E6D9C2)
+I (..\inc\mpr121.h)(0x6901BAD9)
 F (.\mailbox.c)(0x68E6D9C2)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./mailbox.o -MMD)
 I (mailbox.h)(0x68E6D9C2)
-F (..\inc\TLV5616.c)(0x68E6D9C2)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./tlv5616.o -MMD)
-I (..\inc\..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
-I (..\inc\..\inc\TLV5616.h)(0x68E6D9C2)
 F (..\inc\PLL.c)(0x68E6D9C2)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./pll.o -MMD)
 I (..\inc\..\inc\PLL.h)(0x68E6D9C2)
-I (..\inc\..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
-F (..\inc\SysTickInts.c)(0x68E6D9C2)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./systickints.o -MMD)
-I (..\inc\..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
-I (..\inc\..\inc\CortexM.h)(0x68E6D9C2)
-I (..\inc\..\inc\SysTickInts.h)(0x68E6D9C2)
-F (..\inc\BetterSwitch.c)(0x68E6D9C2)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./betterswitch.o -MMD)
-I (..\inc\BetterSwitch.h)(0x68E6D9C2)
-I (..\inc\GPIO_HAL.h)(0x68E6D9C2)
-I (..\inc\hw_memmap.h)(0x68E6D9C2)
-I (..\inc\hw_gpio.h)(0x68E6D9C2)
-I (..\inc\hw_types.h)(0x68E6D9C2)
-I (..\inc\hw_sysctl.h)(0x68E6D9C2)
-I (..\inc\hw_nvic.h)(0x68E6D9C2)
 I (..\inc\..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
 F (..\inc\GPIO_HAL.c)(0x68E6D9C2)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./gpio_hal.o -MMD)
 I (..\inc\GPIO_HAL.h)(0x68E6D9C2)
@@ -55,14 +31,20 @@ I (..\inc\hw_types.h)(0x68E6D9C2)
 I (..\inc\hw_sysctl.h)(0x68E6D9C2)
 I (..\inc\hw_nvic.h)(0x68E6D9C2)
 I (..\inc\..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
-F (..\inc\Timer0A.c)(0x68E6D9C2)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./timer0a.o -MMD)
-I (..\inc\..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
-I (..\inc\..\inc\CortexM.h)(0x68E6D9C2)
-I (..\inc\..\inc\Timer0A.h)(0x68E6D9C2)
 F (..\inc\Unified_Port_Init.c)(0x68E6D9C2)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./unified_port_init.o -MMD)
 I (..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
 I (..\inc\Unified_Port_Init.h)(0x68E6D9C2)
-F (..\inc\Timer1A.c)(0x68E6D9C2)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./timer1a.o -MMD)
+F (..\inc\I2C1.c)(0x6901BBDB)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./i2c1.o -MMD)
+I (..\inc\..\inc\I2C1.h)(0x68E6D9C2)
 I (..\inc\..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
-F (..\inc\Timer2A.c)(0x68E6D9C2)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./timer2a.o -MMD)
+F (..\inc\mpu9250.c)(0x6901B68B)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./mpu9250.o -MMD)
+I (..\inc\..\inc\mpu9250.h)(0x6901BB1D)
+I (..\inc\..\inc\..\inc\I2C1.h)(0x68E6D9C2)
+I (..\inc\..\inc\..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
+I (..\inc\..\inc\SysTick.h)(0x68E6D9C2)
+F (..\inc\mpr121.c)(0x6901BB77)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./mpr121.o -MMD)
+I (..\inc\..\inc\mpr121.h)(0x6901BAD9)
+I (..\inc\..\inc\..\inc\I2C1.h)(0x68E6D9C2)
+I (..\inc\..\inc\..\inc\tm4c123gh6pm.h)(0x68E6D9C2)
+F (..\inc\SysTick.c)(0x6901B5EA)(-xc -std=c99 --target=arm-arm-none-eabi -mcpu=cortex-m4 -mfpu=fpv4-sp-d16 -mfloat-abi=hard -c-fno-rtti -fsigned-char -fshort-enums -fshort-wchar-D__MICROLIB -gdwarf-4 -O1 -ffunction-sections -Wno-packed -Wno-missing-variable-declarations -Wno-missing-prototypes -Wno-missing-noreturn -Wno-sign-conversion -Wno-nonportable-include-path -Wno-reserved-id-macro -Wno-unused-macros -Wno-documentation-unknown-command -Wno-documentation -Wno-license-management -Wno-parentheses-equality -Wno-reserved-identifier -I .. -I ../../..-I./RTE/_Lab7-IC:/Users/benpa/AppData/Local/Arm/Packs/ARM/CMSIS/6.2.0/CMSIS/Core/Include-IC:/Users/benpa/AppData/Local/Arm/Packs/Keil/LM4F_DFP/1.0.0/Device/Include-D__UVISION_VERSION="543" -DLM4F120 -D_RTE_ -Drvmdk -DPART_LM4F120H5QR-o ./systick.o -MMD)
 I (..\inc\..\inc\tm4c123gh6pm.h)(0x68E6D9C2)

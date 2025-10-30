@@ -4,6 +4,7 @@
         "cortexm.h": "c",
         "systickints.h": "c",
         "i2c1.h": "c",
-        "tm4c123gh6pm.h": "c"
+        "tm4c123gh6pm.h": "c",
+        "st7735_portd.h": "c"
     }
 }

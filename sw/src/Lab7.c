@@ -33,7 +33,7 @@ volatile uint16_t touch;
 int main(void)
 {
   DisableInterrupts();
-  PLL_Init(Bus80MHz);          // bus clock at 80 MHz
+  PLL_Init(Bus80MHz); // bus clock at 80 MHz
   SysTick_Init();
   I2C1_Init(400000, 80000000); // I2C at 400 Khz (fast-mode)
   MPU9250_Init();
@@ -49,8 +49,9 @@ int main(void)
     MPU9250_getData(&imu_raw, &imu_proc);
     touch = MPR121_ReadTouchStatus();
 
-    ST7735_FillScreen_PortD(0); // clear screen
-    ST7735_SetCursor_PortD(0,0); // set cursor to (0,0)
+    ST7735_FillRect_PortD(0, 0, ST7735_TFTWIDTH, 64, ST7735_BLACK); //clear text area
+    ST7735_SetCursor_PortD(0, 0);
+    ST7735_OutString_PortD("MPU9250 + MPR121 Demo\n");
     ST7735_OutString_PortD("AX:");
     ST7735_OutUDec_PortD(imu_proc.accel_x);
     ST7735_OutString_PortD(" AY:");
@@ -66,6 +67,6 @@ int main(void)
     ST7735_OutString_PortD("\nTouch:");
     ST7735_OutUDec_PortD(touch);
 
-    SysTick_Wait(80); // 1 ms
+    SysTick_Wait(80000); // 1 ms 
   }
 }

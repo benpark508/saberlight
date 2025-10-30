@@ -35,7 +35,8 @@ int main(void)
   DisableInterrupts();
   PLL_Init(Bus80MHz); // bus clock at 80 MHz
   SysTick_Init();
-  I2C1_Init(400000, 80000000); // I2C at 400 Khz (fast-mode)
+  I2C1_Init(100000, 80000000);
+  // I2C at 100 Khz bc I only have 10k pullups on SDA/SCL lines, if we want higher freq use 2k pullups at 400 Khz
   MPU9250_Init();
   MPR121_Init();
   ST7735_InitR_PortD(INITR_BLACKTAB_PortD); // initialize LCD

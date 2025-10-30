@@ -8,38 +8,39 @@
 #include "../inc/mpu9250.h"
 #include "../inc/SysTick.h"
 
+uint8_t track = 0;
+
 void MPU9250_Init(void){
 
     uint8_t data[2];
+    
+    // reset
+    data[0] = PWR_MGMT_1;
+    data[1] = 0x80;
+    track = I2C1_Write_Buffer(MPU9250_ADDRESS, 2, data);
+    SysTick80_Wait10ms(50);
+
 
     // Wake up the MPU9250
     data[0] = PWR_MGMT_1;
-    data[1] = 0x01; // Set clock source to PLL with X axis gyroscope reference
-    I2C1_Send(MPU9250_ADDRESS, data, 2);
-
-    // check WHO_AM_I register
-    data[0] = WHO_AM_I_MPU9250;
-    I2C1_Send(MPU9250_ADDRESS, data, 1); // Set register address
-    I2C1_Recv(MPU9250_ADDRESS, data, 1); // Read WHO_AM_I register
-    if(data[0] != 0x71){
-        // Handle error: device not found
-        while(1);
-    }
+    data[1] = 0x00;
+    track = I2C1_Write_Buffer(MPU9250_ADDRESS, 2, data);
+    SysTick80_Wait10ms(50);
 
     // enable digital low pass filter
     data[0] = CONFIG;
     data[1] = 0x03; // DLPF_CFG = 3
-    I2C1_Send(MPU9250_ADDRESS, data, 2);
+    track = I2C1_Write_Buffer(MPU9250_ADDRESS, 2, data);
 
     // Set accelerometer configuration
     data[0] = ACCEL_CONFIG;
     data[1] = 0x10; // ±8g
-    I2C1_Send(MPU9250_ADDRESS, data, 2);
+    track = I2C1_Write_Buffer(MPU9250_ADDRESS, 2, data);
 
     // Set gyroscope configuration
     data[0] = GYRO_CONFIG;
     data[1] = 0x08; // ±500°/s
-    I2C1_Send(MPU9250_ADDRESS, data, 2);
+    track = I2C1_Write_Buffer(MPU9250_ADDRESS, 2, data);
 
     // add additional configuration if needed
 }
@@ -47,10 +48,10 @@ void MPU9250_Init(void){
 void MPU9250_read_accel(raw_imu *imu_raw_data){
     uint8_t data[6];
     data[0] = ACCEL_XOUT_H;
-    I2C1_Send(MPU9250_ADDRESS, data, 1); // Set register address
-    I2C1_Recv(MPU9250_ADDRESS, data, 6); // Read 6 bytes of accelerometer data
+    track = I2C1_Send1(MPU9250_ADDRESS, data[0]); // Set register address
+    track = I2C1_Recv(MPU9250_ADDRESS, data, 6); // Read 6 bytes of accelerometer data
 
-    imu_raw_data->accel_x = (data[0] << 8) | data[1]; // X-axis
+    imu_raw_data->accel_x = ((int16_t) data[0] << 8) | data[1]; // X-axis
     imu_raw_data->accel_y = (data[2] << 8) | data[3]; // Y-axis
     imu_raw_data->accel_z = (data[4] << 8) | data[5]; // Z-axis
 }
@@ -58,7 +59,7 @@ void MPU9250_read_accel(raw_imu *imu_raw_data){
 void MPU9250_read_gyro(raw_imu *imu_raw_data){
     uint8_t data[6];
     data[0] = GYRO_XOUT_H;
-    I2C1_Send(MPU9250_ADDRESS, data, 1); // Set register address
+    track = I2C1_Send1(MPU9250_ADDRESS, data[0]); // Set register address
     I2C1_Recv(MPU9250_ADDRESS, data, 6); // Read 6 bytes of gyroscope data
 
     imu_raw_data->gyro_x = (data[0] << 8) | data[1]; // X-axis

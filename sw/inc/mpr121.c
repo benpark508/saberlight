@@ -35,13 +35,6 @@ void MPR121_Init(void) {
     // 2. Stop mode (electrodes disabled)
     MPR121_WriteReg(MPR121_ELECTRODE_CONFIG, 0x00);
 
-    // 3. Verify reset success
-    uint8_t cfg2 = MPR121_ReadReg8(MPR121_CONFIG2);
-    if (cfg2 != 0x24) {
-        // reset failed
-        while(1);
-    }
-
     // 4. Set touch/release thresholds (all electrodes)
     MPR121_SetThresholds(15, 7);
 

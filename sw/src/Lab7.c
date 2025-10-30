@@ -33,6 +33,7 @@ volatile uint16_t touch;
 int main(void)
 {
   DisableInterrupts();
+  Unified_Port_Init();
   PLL_Init(Bus80MHz); // bus clock at 80 MHz
   SysTick_Init();
   I2C1_Init(100000, 80000000);
@@ -40,7 +41,6 @@ int main(void)
   MPU9250_Init();
   MPR121_Init();
   ST7735_InitR_PortD(INITR_BLACKTAB_PortD); // initialize LCD
-  Unified_Port_Init();
   EnableInterrupts();
 
   MPU9250_calibrate(100, &imu_proc);

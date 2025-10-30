@@ -71,6 +71,16 @@
  */
 void I2C1_Init(uint32_t I2Cfreq, uint32_t busFreq);
 
+int I2C1_readRegs(uint8_t slaveAddr, uint8_t regAddr, uint8_t *pData, uint32_t count);
+    
+int I2C1_Write_Byte(int slave_address, char data);
+
+int I2C1_Read_Byte(int slave_address, uint8_t* data);
+
+int I2C1_Write_Buffer(int slave_address, int length, uint8_t* data);
+
+int I2C1_Read_Buffer(int slave_address, int length, uint8_t* data);
+    
 /**
  * I2C1_Send
  * ----------

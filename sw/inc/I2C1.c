@@ -69,8 +69,8 @@ void I2C1_Init(uint32_t I2Cfreq, uint32_t busFreq){
   GPIO_PORTA_AMSEL_R &= ~0xC0;          // 7) disable analog functionality on PA7,6
   I2C1_MCR_R = I2C_MCR_MFE;             // 9) master function enable, no glitch
   I2C1_MCR2_R = I2C_MCR2_GFPW_BYPASS;   // bypass glitch
-  I2C1_MCR_R = I2C_MCR_MFE;          // 9) master function enable, glitch
-//  I2C1_MCR2_R = I2C_MCR2_GFPW_4; // 4 clock glitch
+// I2C1_MCR_R = I2C_MCR_MFE;          // 9) master function enable, glitch
+// I2C1_MCR2_R = I2C_MCR2_GFPW_4; // 4 clock glitch
   I2C1_MTPR_R = ((busFreq/I2Cfreq)/20)-1; // 8) configure clock speed
 }
 

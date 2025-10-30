@@ -9,21 +9,21 @@
 
 static void MPR121_WriteReg(uint8_t reg, uint8_t value) {
     uint8_t data[2] = { reg, value };
-    I2C1_Send(MPR121_ADDRESS, data, 2);
+    I2C1_Write_Buffer(MPR121_ADDRESS, 2, data);
 }
 
 static uint8_t MPR121_ReadReg8(uint8_t reg) {
     uint8_t data = reg;
-    I2C1_Send(MPR121_ADDRESS, &data, 1);
-    I2C1_Recv(MPR121_ADDRESS, &data, 1);
+    I2C1_Write_Byte(MPR121_ADDRESS, data);
+    I2C1_Read_Byte(MPR121_ADDRESS, &data);
     return data;
 }
 
 static uint16_t MPR121_ReadReg16(uint8_t reg) {
     uint8_t data[2];
-    I2C1_Send(MPR121_ADDRESS, &reg, 1);
-    I2C1_Recv(MPR121_ADDRESS, data, 2);
-    return (uint16_t)(data[0] | (data[1] << 8));
+    I2C1_Write_Byte(MPR121_ADDRESS, reg);
+    I2C1_Read_Buffer(MPR121_ADDRESS, 2, data);
+    return ((uint16_t)data[0] | (uint16_t)(data[1] << 8));
 }
 
 // === Soft Reset and Basic Config ===

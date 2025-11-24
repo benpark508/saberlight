@@ -11,7 +11,7 @@
 #include "../inc/Unified_Port_Init.h"
 #include "../inc/I2C1.h"
 #include "../inc/mpu9250.h"
-#include "../inc/mpr121.h"
+#include "../inc/cap1208.h"
 #include "../inc/ST7735_PortD.h"
 
 void DisableInterrupts(void); // Disable interrupts
@@ -28,7 +28,7 @@ void WaitForInterrupt(void);  // Go into low power mode
 
 raw_imu imu_raw;
 processed_imu imu_proc;
-volatile uint16_t touch;
+volatile uint8_t touch;
 
 int main(void)
 {
@@ -36,38 +36,17 @@ int main(void)
   Unified_Port_Init();
   PLL_Init(Bus80MHz); // bus clock at 80 MHz
   SysTick_Init();
-  I2C1_Init(100000, 80000000);
-  // I2C at 100 Khz bc I only have 10k pullups on SDA/SCL lines, if we want higher freq use 2k pullups at 400 Khz
-  MPU9250_Init();
-  MPR121_Init();
+  CAP1208_Init();
   ST7735_InitR_PortD(INITR_BLACKTAB_PortD); // initialize LCD
   EnableInterrupts();
 
-  MPU9250_calibrate(100, &imu_proc);
-
   while (1)
   {
-    MPU9250_getData(&imu_raw, &imu_proc);
-    touch = MPR121_ReadTouchStatus();
-
+    touch = CAP1208_GetInputs();
     ST7735_FillRect_PortD(0, 0, ST7735_TFTWIDTH, 64, ST7735_BLACK); //clear text area
     ST7735_SetCursor_PortD(0, 0);
-    ST7735_OutString_PortD("MPU9250 + MPR121 Demo\n");
-    ST7735_OutString_PortD("AX:");
-    ST7735_OutUDec_PortD(imu_proc.accel_x);
-    ST7735_OutString_PortD(" AY:");
-    ST7735_OutUDec_PortD(imu_proc.accel_y);
-    ST7735_OutString_PortD(" AZ:");
-    ST7735_OutUDec_PortD(imu_proc.accel_z);
-    ST7735_OutString_PortD("\nGX:");
-    ST7735_OutUDec_PortD(imu_proc.gyro_x);
-    ST7735_OutString_PortD(" GY:");
-    ST7735_OutUDec_PortD(imu_proc.gyro_y);
-    ST7735_OutString_PortD(" GZ:");
-    ST7735_OutUDec_PortD(imu_proc.gyro_z);
-    ST7735_OutString_PortD("\nTouch:");
     ST7735_OutUDec_PortD(touch);
-
-    SysTick_Wait(80000); // 1 ms 
+    ST7735_OutString_PortD("CAP1208 Demo\n");
+    SysTick_Wait(100); // 1 ms 
   }
 }

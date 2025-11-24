@@ -5,6 +5,9 @@
         "systickints.h": "c",
         "i2c1.h": "c",
         "tm4c123gh6pm.h": "c",
-        "st7735_portd.h": "c"
+        "st7735_portd.h": "c",
+        "cap1208.h": "c",
+        "systick.h": "c",
+        "gpio_hal.h": "c"
     }
 }

@@ -394,3 +394,96 @@ int I2C1_SendData(uint8_t slaveAddr, uint8_t *pData, uint32_t count){
   return (I2C1_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
 
 }
+
+// Performs an I2C block read following the CAP11xx block read protocol
+// Input:
+//   slaveAddr = 7-bit I2C address (0x28 for CAP1208)
+//   reg       = register address to start reading from
+//   count     = number of bytes to read
+// Output:
+//   0 for success, nonzero for error
+//   Data returned in *pData
+int I2C1_BlockRead(uint8_t slaveAddr, uint8_t reg, uint8_t *pData, uint32_t count)
+{
+    // -------- WRITE REGISTER ADDRESS --------
+    while(I2C1_MCS_R & I2C_MCS_BUSY){};      // wait ready
+    I2C1_MSA_R = (slaveAddr << 1);           // SLA+W
+    I2C1_MDR_R = reg;                        // register address
+    I2C1_MCS_R = I2C_MCS_START | I2C_MCS_RUN;   // send START + reg
+    while(I2C1_MCS_R & I2C_MCS_BUSY){};
+
+    if(I2C1_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)){
+        I2C1_MCS_R = I2C_MCS_STOP;           // STOP on error
+        return -1;
+    }
+
+    // -------- REPEATED START, SWITCH TO READ --------
+    I2C1_MSA_R = (slaveAddr << 1) | 1;        // SLA+R
+
+    if(count == 1){
+        I2C1_MCS_R = I2C_MCS_START | I2C_MCS_STOP | I2C_MCS_RUN;  // single byte → NACK + STOP
+        while(I2C1_MCS_R & I2C_MCS_BUSY){};
+        pData[0] = I2C1_MDR_R;
+        return (I2C1_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+    }
+
+    // first byte with ACK
+    I2C1_MCS_R = I2C_MCS_START | I2C_MCS_ACK | I2C_MCS_RUN;  
+    while(I2C1_MCS_R & I2C_MCS_BUSY){};
+    pData[0] = I2C1_MDR_R;
+
+    // middle bytes
+    for(uint32_t i=1; i < count-1; i++){
+        I2C1_MCS_R = I2C_MCS_ACK | I2C_MCS_RUN;   // ACK
+        while(I2C1_MCS_R & I2C_MCS_BUSY){};
+        pData[i] = I2C1_MDR_R;
+    }
+
+    // last byte → NACK + STOP
+    I2C1_MCS_R = I2C_MCS_STOP | I2C_MCS_RUN;  
+    while(I2C1_MCS_R & I2C_MCS_BUSY){};
+    pData[count-1] = I2C1_MDR_R;
+
+    return (I2C1_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+}
+
+// Performs an I2C block write:
+//   [START] [SLA+W] [register] [data0] [data1] ... [dataN] [STOP]
+// Returns 0 on success, nonzero on error.
+int I2C1_BlockWrite(uint8_t slaveAddr, uint8_t reg, const uint8_t *data, uint32_t len)
+{
+    // --- SEND REGISTER ADDRESS FIRST ---
+    while(I2C1_MCS_R & I2C_MCS_BUSY){};        // wait ready
+    I2C1_MSA_R = (slaveAddr << 1);             // SLA+W
+
+    I2C1_MDR_R = reg;                          // Register address
+    I2C1_MCS_R = I2C_MCS_START | I2C_MCS_RUN;  // START + write reg
+    while(I2C1_MCS_R & I2C_MCS_BUSY){};
+
+    if(I2C1_MCS_R & (I2C_MCS_ERROR | I2C_MCS_ADRACK | I2C_MCS_DATACK)){
+        I2C1_MCS_R = I2C_MCS_STOP;
+        return -1;
+    }
+
+    // --- WRITE DATA BYTES ---
+    for(uint32_t i = 0; i < len; i++){
+        I2C1_MDR_R = data[i];
+
+        // If last byte → STOP
+        if(i == len - 1){
+            I2C1_MCS_R = I2C_MCS_RUN | I2C_MCS_STOP;
+        } else {
+            I2C1_MCS_R = I2C_MCS_RUN;
+        }
+
+        while(I2C1_MCS_R & I2C_MCS_BUSY){};
+
+        if(I2C1_MCS_R & (I2C_MCS_ERROR | I2C_MCS_ADRACK | I2C_MCS_DATACK)){
+            I2C1_MCS_R = I2C_MCS_STOP;
+            return -2;
+        }
+    }
+
+    return 0;   // success
+}
+

@@ -1,84 +1,100 @@
-// mpr121.c
+// cap1208.c
 // Runs on TM4C123
-// Driver for MPR121 capacitive touch sensor
+// Driver for cap1208 capacitive touch sensor
 // Ben Park
 // October 28 2025
 
 #include <stdint.h>
-#include "../inc/mpr121.h"
+#include "../inc/cap1208.h"
+#include "../inc/SysTick.h"
+#include "../inc/GPIO_HAL.h"
 
-static void MPR121_WriteReg(uint8_t reg, uint8_t value) {
-    uint8_t data[2] = { reg, value };
-    I2C1_Write_Buffer(MPR121_ADDRESS, 2, data);
+volatile uint8_t inputStatus = 0;
+
+GPIOConfig_t PB5Config = {
+    .portBase   = GPIO_PORTB_BASE,
+    .pin        = 5,
+    .direction  = GPIO_DIR_INPUT,
+    .pull       = false,
+    .openDrain  = true,
+    .analog     = false,
+    .altFunc    = false,
+    .altFuncNum = 0,
+    .intMode    = GPIO_INT_FALLING
+};
+
+GPIO_PORT_ISR(5, GPIOPortB_Handler)
+
+// read input status register
+// output: bitmask of inputs currently being touched
+// bit 0 = channel 1, bit 1 = channel 2, ..., bit 7 = channel 8
+void CAP1208_ReadInputs(volatile uint8_t *status)
+{
+    I2C1_BlockRead(CAP1208_ADDRESS, R_INPUT_STATUS, status, 1);
 }
 
-static uint8_t MPR121_ReadReg8(uint8_t reg) {
-    uint8_t data = reg;
-    I2C1_Write_Byte(MPR121_ADDRESS, data);
-    I2C1_Read_Byte(MPR121_ADDRESS, &data);
-    return data;
+// call to clear interrupt flag
+void CAP1208_ClearINT(void)
+{
+    I2C1_BlockWrite(CAP1208_ADDRESS, R_MAIN_CONTROL, (uint8_t[]){0x00}, 1); // clear INT bit; this clears sensor input registers
 }
 
-static uint16_t MPR121_ReadReg16(uint8_t reg) {
-    uint8_t data[2];
-    I2C1_Write_Byte(MPR121_ADDRESS, reg);
-    I2C1_Read_Buffer(MPR121_ADDRESS, 2, data);
-    return ((uint16_t)data[0] | (uint16_t)(data[1] << 8));
+// sensitivity: 0 (highest) 128x to 7 (lowest) 1x
+void CAP1208_SetSensitivity(uint8_t sensitivity)
+{
+    uint8_t value = ((sensitivity & 0x07) << 4) | 0b1111; // base shift default
+    I2C1_BlockWrite(CAP1208_ADDRESS, R_SENSITIVITY, &value, 1);
 }
 
-// === Soft Reset and Basic Config ===
-void MPR121_Init(void) {
-
-    // 1. Soft reset
-    MPR121_WriteReg(MPR121_SOFT_RESET, 0x63);
-
-    // 2. Stop mode (electrodes disabled)
-    MPR121_WriteReg(MPR121_ELECTRODE_CONFIG, 0x00);
-
-    // 4. Set touch/release thresholds (all electrodes)
-    MPR121_SetThresholds(15, 7);
-
-    // 5. Configure filtering and debounce
-    MPR121_WriteReg(MPR121_DEBOUNCE, 0x00);   // No debounce
-    MPR121_WriteReg(MPR121_CONFIG1, 0x10);    // FFI=0, CDC=16uA
-    MPR121_WriteReg(MPR121_CONFIG2, 0x20);    // CDT=1, SFI=0, ESI=1ms
-
-    // 6. Enable all 12 electrodes (enter run mode)
-    MPR121_WriteReg(MPR121_ELECTRODE_CONFIG, 0x8F); // CL=10, ELE_EN=15 (12 electrodes active)
+// enable: bitmask of inputs to enable (1 = enable, 0 = disable)
+// bit 0 = channel 1, bit 1 = channel 2, ..., bit 7 = channel 8
+void CAP1208_EnableInputs(uint8_t enable)
+{
+    I2C1_BlockWrite(CAP1208_ADDRESS, R_INPUT_ENABLE, &enable , 1);
 }
 
-// === Read 12-bit touch status ===
-uint16_t MPR121_ReadTouchStatus(void) {
-    return MPR121_ReadReg16(MPR121_TOUCH_STATUS_L);
+// threshold is 7 bits: 0 (least sensitive) to 127 (most sensitive)
+// channel: 1 to 8
+void CAP1208_SetThreshold(uint8_t channel, uint8_t threshold)
+{
+    if(channel < 1 || channel > 8) return; // invalid channel
+    uint8_t reg = R_INPUT_1_THRESH + (channel - 1);
+    I2C1_BlockWrite(CAP1208_ADDRESS, reg, &threshold, 1);
 }
 
-// === Set electrode configuration (enable/disable electrodes) ===
-int MPR121_SetElectrodeConfig(uint8_t config) {
-    if (config > 0x8F) return -1; // invalid config
-    MPR121_WriteReg(MPR121_ELECTRODE_CONFIG, config);
-    return 0;
+void CAP1208_Calibrate(void)
+{
+    I2C1_BlockWrite(CAP1208_ADDRESS, R_CALIBRATION, (uint8_t[]){0b11111111}, 1); // write 1 to start calibration
 }
 
-// === Set thresholds for all 12 electrodes ===
-int MPR121_SetThresholds(uint8_t touchThreshold, uint8_t releaseThreshold) {
-    if (touchThreshold > 255 || releaseThreshold > 255) return -1;
+void CAP1208_EnableInterrupts(uint8_t enable)
+{
+    I2C1_BlockWrite(CAP1208_ADDRESS, R_INTERRUPT_EN, &enable, 1);
+}
 
-    // Enter stop mode to modify thresholds
-    uint8_t prev_config = MPR121_ReadReg8(MPR121_ELECTRODE_CONFIG);
-    if (prev_config != 0) {
-        MPR121_WriteReg(MPR121_ELECTRODE_CONFIG, 0x00);
-    }
+void Input_Handler(void) {
+    GPIO_ClearInterrupt(GPIO_PORTB_BASE, 5);
+    GPIO_DisableInterrupt(GPIO_PORTB_BASE, 5);
+    CAP1208_ReadInputs(&inputStatus);
+    CAP1208_ClearINT();
+}
 
-    // Write thresholds for all 12 electrodes
-    for (uint8_t i = 0; i < 12; i++) {
-        MPR121_WriteReg(MPR121_TOUCH_THRESHOLD_BASE + i * 2, touchThreshold);
-        MPR121_WriteReg(MPR121_RELEASE_THRESHOLD_BASE + i * 2, releaseThreshold);
-    }
+void CAP1208_Init(void)
+{
+    I2C1_Init(400000, 80000000); // Initialize I2C1 at 400kHz with 80MHz bus
+    GPIO_Init(&PB5Config);
+    GPIO_AttachISR(&PB5Config, Input_Handler);
+    CAP1208_ClearINT(); // Clear any existing interrupts, active power mode
+    CAP1208_SetSensitivity(0); // Set highest sensitivity, 128x
+    CAP1208_EnableInputs(0xFF); // Enable all 8 inputs
+    CAP1208_Calibrate(); // Calibrate all inputs
+    SysTick80_Wait10ms(30); // wait 300ms for calibration to complete
+    CAP1208_ClearINT(); // Clear any existing interrupts, active power mode
+    CAP1208_EnableInterrupts(0xFF); // Enable interrupts for all inputs
+    GPIO_EnableInterrupt(GPIO_PORTB_BASE, 5);
+}
 
-    // Restore previous config (re-enable run mode)
-    if (prev_config != 0) {
-        MPR121_WriteReg(MPR121_ELECTRODE_CONFIG, prev_config);
-    }
-
-    return 0;
+uint8_t CAP128_GetInputs()
+{
+    return inputStatus;
 }

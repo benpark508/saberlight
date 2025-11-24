@@ -71,14 +71,81 @@
  */
 void I2C1_Init(uint32_t I2Cfreq, uint32_t busFreq);
 
-int I2C1_readRegs(uint8_t slaveAddr, uint8_t regAddr, uint8_t *pData, uint32_t count);
-    
-int I2C1_Write_Byte(int slave_address, char data);
+/**
+ * I2C1_Send
+ * ----------
+ * @param  slaveAddr  address of slave device.
+ * @param  pData      data address of data to be writen.
+ * @param  count      number of bytes to be writen.
+ * ----------
+ * @brief write 1 or more bytes to I2C1.
+ */
+int I2C1_Send(uint8_t slaveAddr, uint8_t *pData, uint32_t count);
 
-int I2C1_Read_Byte(int slave_address, uint8_t* data);
+/**
+ * I2C1_Send1
+ * ----------
+ * @param  slaveAddr  address of slave device.
+ * @param  data       data to be writen.
+ * ----------
+ * @brief write 1 byte to I2C1.
+ */
+ int I2C1_Send1(uint8_t slaveAddr, uint8_t data);
+ 
+ /**
+ * I2C1_Send2
+ * ----------
+ * @param  slaveAddr  address of slave device.
+ * @param  data1      first data to be writen.
+ * @param  data2      second data to be writen.
+ * ----------
+ * @brief write 1 byte to I2C1.
+ */
+ int I2C1_Send2(int8_t slave, uint8_t data1, uint8_t data2);
+/**
+ * I2C1_Send4
+ * ----------
+ * @param  slaveAddr  address of slave device.
+ * @param  data1      data to be writen.
+ * @param  data2      data to be writen.
+ * @param  data3      data to be writen.
+ * @param  data4      data to be writen.
+ * ----------
+ * @brief write 4 bytes to I2C1.
+ */
+ int I2C1_Send4(uint8_t slaveAddr, uint8_t data1, uint8_t data2, uint8_t data3, uint8_t data4);
 
-int I2C1_Write_Buffer(int slave_address, int length, uint8_t* data);
+/**
+ * I2C1_Recv
+ * ----------
+ * @param  slaveAddr  address of slave device.
+ * @param  pData      data address to store read data.
+ * @param  count      number of bytes to be read.
+ * ----------
+ * @brief read 1 or more bytes from I2C1.
+ */
+int I2C1_Recv(uint8_t slaveAddr, uint8_t *pData, uint32_t count);
 
-int I2C1_Read_Buffer(int slave_address, int length, uint8_t* data);
+/**
+ * I2C1_Recv3
+ * ----------
+ * @param  slaveAddr  address of slave device.
+ * @param  data       data address to store read data.
+ * @param  count      number of bytes to be read.
+ * @brief read 2 or more bytes from I2C1.
+ */
+int I2C1_Recv3(uint8_t slaveAddr, uint8_t data[3]);
 
-#endif // _I2C1_H_
+/**
+ * I2C1_SendData
+ * ----------
+ * @param  slaveAddr  address of slave device.
+ * @param  pData      data address of data to be writen.
+ * @param  count      number of bytes to be writen.
+ * ----------
+ * @brief write many bytes to I2C1.
+ */
+int I2C1_SendData(uint8_t slaveAddr, uint8_t *pData, uint32_t count);
+
+
+#endif //_I2C1_H_

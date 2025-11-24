@@ -9,7 +9,7 @@
 #include "../inc/SysTick.h"
 #include "../inc/GPIO_HAL.h"
 
-volatile uint8_t inputStatus = 0;
+uint8_t inputStatus = 0;
 
 GPIOConfig_t PB5Config = {
     .portBase   = GPIO_PORTB_BASE,
@@ -28,7 +28,7 @@ GPIO_PORT_ISR(5, GPIOPortB_Handler)
 // read input status register
 // output: bitmask of inputs currently being touched
 // bit 0 = channel 1, bit 1 = channel 2, ..., bit 7 = channel 8
-void CAP1208_ReadInputs(volatile uint8_t *status)
+void CAP1208_ReadInputs(uint8_t *status)
 {
     I2C1_BlockRead(CAP1208_ADDRESS, R_INPUT_STATUS, status, 1);
 }
@@ -94,7 +94,7 @@ void CAP1208_Init(void)
     GPIO_EnableInterrupt(GPIO_PORTB_BASE, 5);
 }
 
-uint8_t CAP128_GetInputs()
+uint8_t CAP1208_GetInputs(void)
 {
     return inputStatus;
 }

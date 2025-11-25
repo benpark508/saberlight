@@ -9,10 +9,12 @@
 #include "../inc/SysTick.h"
 #include "../inc/GPIO_HAL.h"
 #include "../inc/Unified_Port_Init.h"
-#include "../inc/I2C1.h"
+#include "../inc/I2C3.h"
 #include "../inc/mpu9250.h"
 #include "../inc/cap1208.h"
-#include "../inc/ST7735_PortD.h"
+#include "../inc/ST7735.h"
+#include "../inc/Timer0A.h"
+#include "../inc/UART.h"
 
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
@@ -28,7 +30,11 @@ void WaitForInterrupt(void);  // Go into low power mode
 
 raw_imu imu_raw;
 processed_imu imu_proc;
-volatile uint8_t touch;
+volatile uint8_t printflag = 0;
+
+void debug_serial(void){
+    printflag = 1;
+}
 
 int main(void)
 {
@@ -37,16 +43,17 @@ int main(void)
   PLL_Init(Bus80MHz); // bus clock at 80 MHz
   SysTick_Init();
   CAP1208_Init();
-  ST7735_InitR_PortD(INITR_BLACKTAB_PortD); // initialize LCD
+  ST7735_InitR(INITR_BLACKTAB); // initialize LCD
+  Timer0A_Init(debug_serial, 8000000, 2); // print every 100 ms
+  UART_Init();
   EnableInterrupts();
 
   while (1)
   {
-    touch = CAP1208_GetInputs();
-    ST7735_FillRect_PortD(0, 0, ST7735_TFTWIDTH, 64, ST7735_BLACK); //clear text area
-    ST7735_SetCursor_PortD(0, 0);
-    ST7735_OutUDec_PortD(touch);
-    ST7735_OutString_PortD("CAP1208 Demo\n");
-    SysTick_Wait(100); // 1 ms 
+    if(printflag){
+      printflag = 0;
+      UART_OutUDec(CAP1208_GetInputs());
+      UART_OutString("\r\n");
+    }
   }
 }

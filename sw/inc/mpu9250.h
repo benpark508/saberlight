@@ -8,7 +8,6 @@
 #define __MPU9250_H__
 
 #include <stdint.h>
-#include "../inc/I2C1.h"
 #include "../inc/tm4c123gh6pm.h"
 
 #define MPU9250_ADDRESS     0x68

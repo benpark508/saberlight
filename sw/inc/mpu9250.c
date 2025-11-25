@@ -10,6 +10,7 @@
 
 uint8_t track = 0;
 
+/*
 void MPU9250_Init(void)
 {
     // write this
@@ -115,3 +116,4 @@ void MPU9250_getData(raw_imu *rData, processed_imu *pData)
     pData->gyro_y = rData->gyro_y - pData->gyro_offY;
     pData->gyro_z = rData->gyro_z - pData->gyro_offZ;
 }
+    */

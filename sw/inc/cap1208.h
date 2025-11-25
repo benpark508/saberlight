@@ -8,7 +8,7 @@
 #define __CAP1208_H__
 
 #include <stdint.h>
-#include "../inc/I2C1.h"
+#include "../inc/I2C3.h"
 #include "../inc/tm4c123gh6pm.h"
 
 // DEVICE ADDRESS

@@ -11,9 +11,9 @@
 
 uint8_t inputStatus = 0;
 
-GPIOConfig_t PB5Config = {
-    .portBase   = GPIO_PORTB_BASE,
-    .pin        = 5,
+GPIOConfig_t PF4Config = {
+    .portBase   = GPIO_PORTF_BASE,
+    .pin        = 4,
     .direction  = GPIO_DIR_INPUT,
     .pull       = false,
     .openDrain  = true,
@@ -23,34 +23,34 @@ GPIOConfig_t PB5Config = {
     .intMode    = GPIO_INT_FALLING
 };
 
-GPIO_PORT_ISR(5, GPIOPortB_Handler)
+GPIO_PORT_ISR(4, GPIOPortF_Handler)
 
 // read input status register
 // output: bitmask of inputs currently being touched
 // bit 0 = channel 1, bit 1 = channel 2, ..., bit 7 = channel 8
 void CAP1208_ReadInputs(uint8_t *status)
 {
-    I2C1_BlockRead(CAP1208_ADDRESS, R_INPUT_STATUS, status, 1);
+    I2C3_BlockRead(CAP1208_ADDRESS, R_INPUT_STATUS, status, 1);
 }
 
 // call to clear interrupt flag
 void CAP1208_ClearINT(void)
 {
-    I2C1_BlockWrite(CAP1208_ADDRESS, R_MAIN_CONTROL, (uint8_t[]){0x00}, 1); // clear INT bit; this clears sensor input registers
+    I2C3_BlockWrite(CAP1208_ADDRESS, R_MAIN_CONTROL, (uint8_t[]){0x00}, 1); // clear INT bit; this clears sensor input registers
 }
 
 // sensitivity: 0 (highest) 128x to 7 (lowest) 1x
 void CAP1208_SetSensitivity(uint8_t sensitivity)
 {
     uint8_t value = ((sensitivity & 0x07) << 4) | 0b1111; // base shift default
-    I2C1_BlockWrite(CAP1208_ADDRESS, R_SENSITIVITY, &value, 1);
+    I2C3_BlockWrite(CAP1208_ADDRESS, R_SENSITIVITY, &value, 1);
 }
 
 // enable: bitmask of inputs to enable (1 = enable, 0 = disable)
 // bit 0 = channel 1, bit 1 = channel 2, ..., bit 7 = channel 8
 void CAP1208_EnableInputs(uint8_t enable)
 {
-    I2C1_BlockWrite(CAP1208_ADDRESS, R_INPUT_ENABLE, &enable , 1);
+    I2C3_BlockWrite(CAP1208_ADDRESS, R_INPUT_ENABLE, &enable , 1);
 }
 
 // threshold is 7 bits: 0 (least sensitive) to 127 (most sensitive)
@@ -59,31 +59,31 @@ void CAP1208_SetThreshold(uint8_t channel, uint8_t threshold)
 {
     if(channel < 1 || channel > 8) return; // invalid channel
     uint8_t reg = R_INPUT_1_THRESH + (channel - 1);
-    I2C1_BlockWrite(CAP1208_ADDRESS, reg, &threshold, 1);
+    I2C3_BlockWrite(CAP1208_ADDRESS, reg, &threshold, 1);
 }
 
 void CAP1208_Calibrate(void)
 {
-    I2C1_BlockWrite(CAP1208_ADDRESS, R_CALIBRATION, (uint8_t[]){0b11111111}, 1); // write 1 to start calibration
+    I2C3_BlockWrite(CAP1208_ADDRESS, R_CALIBRATION, (uint8_t[]){0b11111111}, 1); // write 1 to start calibration
 }
 
 void CAP1208_EnableInterrupts(uint8_t enable)
 {
-    I2C1_BlockWrite(CAP1208_ADDRESS, R_INTERRUPT_EN, &enable, 1);
+    I2C3_BlockWrite(CAP1208_ADDRESS, R_INTERRUPT_EN, &enable, 1);
 }
 
 void Input_Handler(void) {
-    GPIO_ClearInterrupt(GPIO_PORTB_BASE, 5);
-    GPIO_DisableInterrupt(GPIO_PORTB_BASE, 5);
+    GPIO_ClearInterrupt(GPIO_PORTF_BASE, 4);
+    GPIO_DisableInterrupt(GPIO_PORTF_BASE, 4);
     CAP1208_ReadInputs(&inputStatus);
     CAP1208_ClearINT();
 }
 
 void CAP1208_Init(void)
 {
-    I2C1_Init(400000, 80000000); // Initialize I2C1 at 400kHz with 80MHz bus
-    GPIO_Init(&PB5Config);
-    GPIO_AttachISR(&PB5Config, Input_Handler);
+    I2C3_Init(400000, 80000000); // Initialize I2C3 at 400kHz with 80MHz bus
+    GPIO_Init(&PF4Config);
+    GPIO_AttachISR(&PF4Config, Input_Handler);
     CAP1208_ClearINT(); // Clear any existing interrupts, active power mode
     CAP1208_SetSensitivity(0); // Set highest sensitivity, 128x
     CAP1208_EnableInputs(0xFF); // Enable all 8 inputs
@@ -91,7 +91,7 @@ void CAP1208_Init(void)
     SysTick80_Wait10ms(30); // wait 300ms for calibration to complete
     CAP1208_ClearINT(); // Clear any existing interrupts, active power mode
     CAP1208_EnableInterrupts(0xFF); // Enable interrupts for all inputs
-    GPIO_EnableInterrupt(GPIO_PORTB_BASE, 5);
+    GPIO_EnableInterrupt(GPIO_PORTF_BASE, 4);
 }
 
 uint8_t CAP1208_GetInputs(void)

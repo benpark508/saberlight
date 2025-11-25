@@ -147,5 +147,9 @@ int I2C3_Recv3(uint8_t slaveAddr, uint8_t data[3]);
  */
 int I2C3_SendData(uint8_t slaveAddr, uint8_t *pData, uint32_t count);
 
+int I2C3_BlockWrite(uint8_t slaveAddr, uint8_t reg, const uint8_t *data, uint32_t len);
+
+int I2C3_BlockRead(uint8_t slaveAddr, uint8_t reg, uint8_t *pData, uint32_t count);
+
 
 #endif //_I2C3_H_

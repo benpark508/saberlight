@@ -8,6 +8,10 @@
         "st7735_portd.h": "c",
         "cap1208.h": "c",
         "systick.h": "c",
-        "gpio_hal.h": "c"
+        "gpio_hal.h": "c",
+        "uart.h": "c",
+        "uart0int.h": "c",
+        "i2c3.h": "c",
+        "mpu9250.h": "c"
     }
 }

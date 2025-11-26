@@ -77,6 +77,7 @@ void Input_Handler(void) {
     GPIO_DisableInterrupt(GPIO_PORTF_BASE, 4);
     CAP1208_ReadInputs(&inputStatus);
     CAP1208_ClearINT();
+    GPIO_EnableInterrupt(GPIO_PORTF_BASE, 4);
 }
 
 void CAP1208_Init(void)

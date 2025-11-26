@@ -14,7 +14,6 @@
 #include "../inc/cap1208.h"
 #include "../inc/ST7735.h"
 #include "../inc/Timer0A.h"
-#include "../inc/UART.h"
 
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
@@ -31,9 +30,12 @@ void WaitForInterrupt(void);  // Go into low power mode
 raw_imu imu_raw;
 processed_imu imu_proc;
 volatile uint8_t printflag = 0;
+volatile uint8_t touch = 0;
 
-void debug_serial(void){
-    printflag = 1;
+void debug_serial(void)
+{
+  touch = CAP1208_GetInputs();
+  printflag = 1;
 }
 
 int main(void)
@@ -43,17 +45,20 @@ int main(void)
   PLL_Init(Bus80MHz); // bus clock at 80 MHz
   SysTick_Init();
   CAP1208_Init();
-  ST7735_InitR(INITR_BLACKTAB); // initialize LCD
+  ST7735_InitR(INITR_BLACKTAB);           // initialize LCD
   Timer0A_Init(debug_serial, 8000000, 2); // print every 100 ms
-  UART_Init();
   EnableInterrupts();
 
   while (1)
   {
-    if(printflag){
+    if (printflag)
+    {
       printflag = 0;
-      UART_OutUDec(CAP1208_GetInputs());
-      UART_OutString("\r\n");
+      ST7735_FillRect(0, 0, ST7735_TFTWIDTH, 64, ST7735_BLACK); // clear text area
+      ST7735_SetCursor(0, 0);
+      ST7735_OutString("cap1208 demo\n");
+      ST7735_OutString("val: ");
+      ST7735_OutUDec(touch);
     }
   }
 }

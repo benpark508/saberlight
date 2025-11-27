@@ -415,11 +415,6 @@
               <FilePath>..\inc\Unified_Port_Init.c</FilePath>
             </File>
             <File>
-              <FileName>mpu9250.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\inc\mpu9250.c</FilePath>
-            </File>
-            <File>
               <FileName>SysTick.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\inc\SysTick.c</FilePath>
@@ -443,6 +438,11 @@
               <FileName>Timer0A.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\inc\Timer0A.c</FilePath>
+            </File>
+            <File>
+              <FileName>mpu6500.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\mpu6500.c</FilePath>
             </File>
           </Files>
         </Group>

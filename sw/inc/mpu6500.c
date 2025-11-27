@@ -162,3 +162,17 @@ void MPU6500_getData(raw_imu *rData, processed_imu *pData)
     pData->gyro_y = rData->gyro_y - pData->gyro_offY;
     pData->gyro_z = rData->gyro_z - pData->gyro_offZ;
 }
+
+void MPU6500_read_accel(raw_imu *imu_raw_data)
+{
+    imu_raw_data->accel_x = (int16_t)((MPU6500_ReadReg(ACCEL_XOUT_H) << 8) | MPU6500_ReadReg(ACCEL_XOUT_L));
+    imu_raw_data->accel_y = (int16_t)((MPU6500_ReadReg(ACCEL_YOUT_H) << 8) | MPU6500_ReadReg(ACCEL_YOUT_L));
+    imu_raw_data->accel_z = (int16_t)((MPU6500_ReadReg(ACCEL_ZOUT_H) << 8) | MPU6500_ReadReg(ACCEL_ZOUT_L));
+}
+
+void MPU6500_read_gyro(raw_imu *imu_raw_data)
+{
+    imu_raw_data->gyro_x = (int16_t)((MPU6500_ReadReg(GYRO_XOUT_H) << 8) | MPU6500_ReadReg(GYRO_XOUT_L));
+    imu_raw_data->gyro_y = (int16_t)((MPU6500_ReadReg(GYRO_YOUT_H) << 8) | MPU6500_ReadReg(GYRO_YOUT_L));
+    imu_raw_data->gyro_z = (int16_t)((MPU6500_ReadReg(GYRO_ZOUT_H) << 8) | MPU6500_ReadReg(GYRO_ZOUT_L));
+}

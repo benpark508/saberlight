@@ -14,6 +14,8 @@
         "i2c3.h": "c",
         "mpu9250.h": "c",
         "hw_gpio.h": "c",
-        "hw_types.h": "c"
+        "hw_types.h": "c",
+        "mpu6500.h": "c",
+        "unified_port_init.h": "c"
     }
 }

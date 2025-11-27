@@ -41,30 +41,6 @@ void MPU9250_Init(void)
     SSI1_CR1_R |= SSI_CR1_SSE;                                                                 // enable SSI
 }
 
-void MPU9250_read_accel(raw_imu *imu_raw_data)
-{
-    uint8_t data[6];
-    data[0] = ACCEL_XOUT_H;
-    track = I2C1_Send1(MPU9250_ADDRESS, data[0]); // Set register address
-    track = I2C1_Recv(MPU9250_ADDRESS, data, 6);  // Read 6 bytes of accelerometer data
-
-    imu_raw_data->accel_x = ((int16_t)data[0] << 8) | data[1]; // X-axis
-    imu_raw_data->accel_y = (data[2] << 8) | data[3];          // Y-axis
-    imu_raw_data->accel_z = (data[4] << 8) | data[5];          // Z-axis
-}
-
-void MPU9250_read_gyro(raw_imu *imu_raw_data)
-{
-    uint8_t data[6];
-    data[0] = GYRO_XOUT_H;
-    track = I2C1_Send1(MPU9250_ADDRESS, data[0]); // Set register address
-    I2C1_Recv(MPU9250_ADDRESS, data, 6);          // Read 6 bytes of gyroscope data
-
-    imu_raw_data->gyro_x = (data[0] << 8) | data[1]; // X-axis
-    imu_raw_data->gyro_y = (data[2] << 8) | data[3]; // Y-axis
-    imu_raw_data->gyro_z = (data[4] << 8) | data[5]; // Z-axis
-}
-
 void MPU9250_calibrate(uint16_t numCalPoints, processed_imu *imu_processed_data)
 {
     // Init

@@ -10,18 +10,14 @@
 
 uint8_t track = 0;
 
-/*
 void MPU9250_Init(void)
 {
-    // write this
-    // Consider the following registers:
-    // SYSCTL_RCGCSSI_R, SSI1_CR1_R, SSI1_CPSR_R, SSI1_CR0_R, SSI1_DR_R, SSI1_CR1_R
-
-    SYSCTL_RCGCSSI_R |= 0x02;  // activate SSI1
-    SYSCTL_RCGCGPIO_R |= 0x08; // activate port D
-    while ((SYSCTL_PRGPIO_R & 0x08) == 0)
+    SYSCTL_RCGCSSI_R |= 0x01;  // activate SSI0
+    SYSCTL_RCGCGPIO_R |= 0x01; // activate port A
+    while ((SYSCTL_PRGPIO_R & 0x01) == 0)
     {
     }; // allow time for clock to start
+
     GPIO_PORTD_LOCK_R = 0x4C4F434B; // 2) unlock GPIO Port D
 
     // initialize SSI1
@@ -116,4 +112,3 @@ void MPU9250_getData(raw_imu *rData, processed_imu *pData)
     pData->gyro_y = rData->gyro_y - pData->gyro_offY;
     pData->gyro_z = rData->gyro_z - pData->gyro_offZ;
 }
-    */

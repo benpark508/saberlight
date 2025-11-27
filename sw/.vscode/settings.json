@@ -12,6 +12,7 @@
         "uart.h": "c",
         "uart0int.h": "c",
         "i2c3.h": "c",
-        "mpu9250.h": "c"
+        "mpu9250.h": "c",
+        "hw_gpio.h": "c"
     }
 }

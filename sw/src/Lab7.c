@@ -36,6 +36,17 @@ processed_imu imu_proc;
 volatile uint8_t printflag = 0;
 volatile uint8_t touch = 0;
 
+GPIOConfig_t PB1Config = {
+    .portBase = GPIO_PORTB_BASE,
+    .pin = 1,
+    .direction = GPIO_DIR_OUTPUT,
+    .pull = false,
+    .openDrain = false,
+    .analog = false,
+    .altFunc = false,
+    .altFuncNum = 0,
+    .intMode = GPIO_INT_DISABLE};
+
 void debug_serial(void)
 {
   touch = CAP1208_GetInputs();
@@ -47,6 +58,7 @@ int main(void)
   DisableInterrupts();
   Unified_Port_Init();
   PLL_Init(Bus80MHz);       // bus clock at 80 MHz
+  GPIO_Init(&PB1Config);
   GPIO_PORTA_DIR_R |= 0x02; // PA1 output
   GPIO_PORTA_DEN_R |= 0x02; // PA1 digital enable
   DAC_CS = DAC_CS_HIGH;     // deselect dac
@@ -62,11 +74,18 @@ int main(void)
     if (printflag)
     {
       printflag = 0;
+      /*
       ST7735_FillRect(0, 0, ST7735_TFTWIDTH, 64, ST7735_BLACK); // clear text area
       ST7735_SetCursor(0, 0);
       ST7735_OutString("cap1208 demo\n");
       ST7735_OutString("val: ");
       ST7735_OutUDec(touch);
+      */
+      if(touch & 0x01){
+        GPIO_Write(GPIO_PORTB_BASE, 1, 0);
+      } else {
+        GPIO_Write(GPIO_PORTB_BASE, 1, 1);
+      }
     }
   }
 }

@@ -15,6 +15,10 @@
 #include "../inc/ST7735.h"
 #include "../inc/Timer0A.h"
 
+#define DAC_CS (*((volatile uint32_t *)0x40004008)) // PA1 bit-band
+#define DAC_CS_LOW 0x00
+#define DAC_CS_HIGH 0x02
+
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
 void WaitForInterrupt(void);  // low power mode
@@ -42,10 +46,13 @@ int main(void)
 {
   DisableInterrupts();
   Unified_Port_Init();
-  PLL_Init(Bus80MHz); // bus clock at 80 MHz
+  PLL_Init(Bus80MHz);       // bus clock at 80 MHz
+  GPIO_PORTA_DIR_R |= 0x02; // PA1 output
+  GPIO_PORTA_DEN_R |= 0x02; // PA1 digital enable
+  DAC_CS = DAC_CS_HIGH;     // deselect dac
   SysTick_Init();
   CAP1208_Init();
-  MPU6500_Init(); // initialize MPU6500, deselect cs pin
+  MPU6500_Init();                         // initialize MPU6500, deselect cs pin
   ST7735_InitR(INITR_GREENTAB);           // initialize LCD
   Timer0A_Init(debug_serial, 8000000, 2); // print every 100 ms
   EnableInterrupts();

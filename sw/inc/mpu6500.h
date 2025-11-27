@@ -1,17 +1,16 @@
-// mpu9250.h
+// mpu6500.h
 // Runs on TM4C123
-// header file for mpu9250.c
+// header file for mpu6500.c
 // Ben Park
 // October 28 2025
 
-#ifndef __MPU9250_H__
-#define __MPU9250_H__
+#ifndef __MPU6500_H__
+#define __MPU6500_H__
 
 #include <stdint.h>
 #include "../inc/tm4c123gh6pm.h"
 
-#define MPU9250_ADDRESS     0x68
-#define WHO_AM_I_MPU9250    0x75
+#define MPU6500_ADDRESS     0x68
 #define PWR_MGMT_1         0x6B
 #define SMPLRT_DIV         0x19
 #define CONFIG             0x1A
@@ -54,10 +53,12 @@ typedef struct {
 
 
 
-void MPU9250_Init(void);
-void MPU9250_read_accel(raw_imu *imu_raw_data);
-void MPU9250_read_gyro(raw_imu *imu_raw_data);
-void MPU9250_getData(raw_imu *rData, processed_imu *pData);
-void MPU9250_calibrate(uint16_t numCalPoints, processed_imu *imu_processed_data);
+void MPU6500_Init(void);
+void MPU6500_WriteReg(uint8_t reg, uint8_t data);
+uint8_t MPU6500_ReadReg(uint8_t reg);
+void MPU6500_read_accel(raw_imu *imu_raw_data);
+void MPU6500_read_gyro(raw_imu *imu_raw_data);
+void MPU6500_getData(raw_imu *rData, processed_imu *pData);
+void MPU6500_calibrate(uint16_t numCalPoints, processed_imu *imu_processed_data);
 
-#endif // __MPU9250_H__
+#endif // __MPU6500_H__

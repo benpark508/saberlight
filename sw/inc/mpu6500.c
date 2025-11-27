@@ -38,6 +38,7 @@ void MPU6500_Init(void)
     GPIO_PORTD_DEN_R |= 0x10; // PD4 Digital Enable
     MPU_CS = 0x10;            // Set High (Deselect)
 
+    /*
     // 3. Perform Reset & Configuration
     uint32_t lcd_speed = SSI0_CPSR_R; // Save LCD speed
     WaitForSSI0Idle();
@@ -56,6 +57,7 @@ void MPU6500_Init(void)
 
     WaitForSSI0Idle();
     SSI0_CPSR_R = lcd_speed; 
+    */
 }
 
 void MPU6500_WriteReg(uint8_t reg, uint8_t data){

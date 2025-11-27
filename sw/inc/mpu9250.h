@@ -55,6 +55,8 @@ typedef struct {
 
 
 void MPU9250_Init(void);
+void MPU9250_read_accel(raw_imu *imu_raw_data);
+void MPU9250_read_gyro(raw_imu *imu_raw_data);
 void MPU9250_getData(raw_imu *rData, processed_imu *pData);
 void MPU9250_calibrate(uint16_t numCalPoints, processed_imu *imu_processed_data);
 

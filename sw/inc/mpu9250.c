@@ -41,6 +41,14 @@ void MPU9250_Init(void)
     SSI1_CR1_R |= SSI_CR1_SSE;                                                                 // enable SSI
 }
 
+void MPU9250_read_accel(raw_imu *imu_raw_data)
+{
+}
+
+void MPU9250_read_gyro(raw_imu *imu_raw_data)
+{
+}
+
 void MPU9250_calibrate(uint16_t numCalPoints, processed_imu *imu_processed_data)
 {
     // Init

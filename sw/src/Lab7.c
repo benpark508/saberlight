@@ -45,7 +45,7 @@ int main(void)
   PLL_Init(Bus80MHz); // bus clock at 80 MHz
   SysTick_Init();
   CAP1208_Init();
-  ST7735_InitR(INITR_BLACKTAB);           // initialize LCD
+  ST7735_InitR(INITR_GREENTAB);           // initialize LCD
   Timer0A_Init(debug_serial, 8000000, 2); // print every 100 ms
   EnableInterrupts();
 

@@ -72,6 +72,14 @@ void CAP1208_EnableInterrupts(uint8_t enable)
     I2C3_BlockWrite(CAP1208_ADDRESS, R_INTERRUPT_EN, &enable, 1);
 }
 
+// returns count for specified channel (1 to 8)
+void CAP1208_ReadCount(uint8_t channel, int8_t *count)
+{
+    uint8_t temp;
+    I2C3_BlockRead(CAP1208_ADDRESS, R_INPUT_1_DELTA + (channel - 1), &temp, 1);
+    *count = (int8_t)temp; 
+}
+
 void Input_Handler(void) {
     GPIO_ClearInterrupt(GPIO_PORTF_BASE, 4);
     GPIO_DisableInterrupt(GPIO_PORTF_BASE, 4);
@@ -86,7 +94,7 @@ void CAP1208_Init(void)
     GPIO_Init(&PF4Config);
     GPIO_AttachISR(&PF4Config, Input_Handler);
     CAP1208_ClearINT(); // Clear any existing interrupts, active power mode
-    CAP1208_SetSensitivity(0); // Set highest sensitivity, 128x
+    CAP1208_SetSensitivity(3); // Set highest sensitivity, 128x
     CAP1208_EnableInputs(0xFF); // Enable all 8 inputs
     CAP1208_Calibrate(); // Calibrate all inputs
     SysTick80_Wait10ms(30); // wait 300ms for calibration to complete
@@ -95,7 +103,7 @@ void CAP1208_Init(void)
     GPIO_EnableInterrupt(GPIO_PORTF_BASE, 4);
 }
 
-uint8_t CAP1208_GetInputs(void)
+void CAP1208_GetInputs(uint8_t *result)
 {
-    return inputStatus;
+    *result = inputStatus;
 }

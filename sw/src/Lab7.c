@@ -34,7 +34,8 @@ void WaitForInterrupt(void);  // Go into low power mode
 raw_imu imu_raw;
 processed_imu imu_proc;
 volatile uint8_t printflag = 0;
-volatile uint8_t touch = 0;
+uint8_t touch = 0;
+int8_t count = 0;
 
 GPIOConfig_t PB1Config = {
     .portBase = GPIO_PORTB_BASE,
@@ -49,7 +50,8 @@ GPIOConfig_t PB1Config = {
 
 void debug_serial(void)
 {
-  touch = CAP1208_GetInputs();
+  CAP1208_ReadCount(1, &count);
+  CAP1208_GetInputs(&touch);
   printflag = 1;
 }
 
@@ -74,13 +76,13 @@ int main(void)
     if (printflag)
     {
       printflag = 0;
-      /*
+      
       ST7735_FillRect(0, 0, ST7735_TFTWIDTH, 64, ST7735_BLACK); // clear text area
       ST7735_SetCursor(0, 0);
       ST7735_OutString("cap1208 demo\n");
-      ST7735_OutString("val: ");
-      ST7735_OutUDec(touch);
-      */
+      ST7735_OutString("delta: ");
+      ST7735_OutUDec(count);
+      
       if(touch & 0x01){
         GPIO_Write(GPIO_PORTB_BASE, 1, 0);
       } else {

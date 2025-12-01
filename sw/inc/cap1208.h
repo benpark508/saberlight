@@ -98,6 +98,8 @@
 // Function prototypes
 void CAP1208_Init(void);
 
-uint8_t CAP1208_GetInputs(void);
+void CAP1208_GetInputs(uint8_t *result);
+
+void CAP1208_ReadCount(uint8_t channel, int8_t *count);
 
 #endif // __CAP1208_H__

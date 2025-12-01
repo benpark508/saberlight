@@ -28,17 +28,6 @@ void WaitForSSI0Idle(void)
 
 void MPU6500_Init(void)
 {
-    volatile uint32_t delay;
-
-    SYSCTL_RCGCGPIO_R |= 0x08; // activate port D
-    while ((SYSCTL_PRGPIO_R & 0x08) == 0)
-    {
-    };
-
-    GPIO_PORTD_DIR_R |= 0x10; // PD4 Output
-    GPIO_PORTD_DEN_R |= 0x10; // PD4 Digital Enable
-    MPU_CS = MPU_CS_HIGH;     // deselect imu
-
     /*
     // 3. Perform Reset & Configuration
     uint32_t lcd_speed = SSI0_CPSR_R; // Save LCD speed

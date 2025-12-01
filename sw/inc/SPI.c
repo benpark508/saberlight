@@ -39,42 +39,6 @@
 #include "../inc/tm4c123gh6pm.h"
 #include "SPI.h"
 
-#define SSI_CR0_SCR_M 0x0000FF00      // SSI Serial Clock Rate
-#define SSI_CR0_SPH 0x00000080        // SSI Serial Clock Phase
-#define SSI_CR0_SPO 0x00000040        // SSI Serial Clock Polarity
-#define SSI_CR0_FRF_M 0x00000030      // SSI Frame Format Select
-#define SSI_CR0_FRF_MOTO 0x00000000   // Freescale SPI Frame Format
-#define SSI_CR0_DSS_M 0x0000000F      // SSI Data Size Select
-#define SSI_CR0_DSS_8 0x00000007      // 8-bit data
-#define SSI_CR1_MS 0x00000004         // SSI Master/Slave Select
-#define SSI_CR1_SSE 0x00000002        // SSI Synchronous Serial Port
-                                      // Enable
-#define SSI_SR_BSY 0x00000010         // SSI Busy Bit
-#define SSI_SR_TNF 0x00000002         // SSI Transmit FIFO Not Full
-#define SSI_CPSR_CPSDVSR_M 0x000000FF // SSI Clock Prescale Divisor
-#define SSI_CC_CS_M 0x0000000F        // SSI Baud Clock Source
-#define SSI_CC_CS_SYSPLL 0x00000000   // Either the system clock (if the
-                                      // PLL bypass is in effect) or the
-                                      // PLL output (default)
-#define SYSCTL_RCGC1_SSI0 0x00000010  // SSI0 Clock Gating Control
-#define SYSCTL_RCGC2_GPIOA 0x00000001 // port A Clock Gating Control
-
-#define SDC_CS (*((volatile unsigned long *)0x40004200)) // PA7
-#define SDC_CS_LOW 0
-#define SDC_CS_HIGH 0x80
-
-#define TFT_CS (*((volatile unsigned long *)0x40004100)) // PA6
-#define TFT_CS_LOW 0
-#define TFT_CS_HIGH 0x40
-
-#define IMU_CS (*((volatile unsigned long *)0x40007040)) // PD4
-#define IMU_CS_LOW 0
-#define IMU_CS_HIGH 0x10
-
-#define DAC_CS (*((volatile unsigned long *)0x40004008)) // PA1
-#define DAC_CS_LOW 0
-#define DAC_CS_HIGH 0x02
-
 static volatile UINT Timer1, Timer2;
 
 // initialize for SPI
@@ -85,11 +49,26 @@ static volatile UINT Timer1, Timer2;
 void SPI_Init(unsigned long CPSDVSR)
 {
     volatile uint32_t delay;
+
     SYSCTL_RCGCSSI_R |= 0x01;  // activate SSI0
+
     SYSCTL_RCGCGPIO_R |= 0x01; // activate port A
     while ((SYSCTL_PRGPIO_R & 0x01) == 0)
     {
     }; // allow time for clock to start
+
+    SYSCTL_RCGCGPIO_R |= 0x08; // activate port D
+    while ((SYSCTL_PRGPIO_R & 0x08) == 0)
+    {
+    };
+
+    // initialize IMU CS
+    GPIO_PORTD_DIR_R |= 0x10; // PD4 Output
+    GPIO_PORTD_AFSEL_R &= ~0x10;    // GPIO
+    GPIO_PORTD_DEN_R |= 0x10; // PD4 Digital Enable
+    GPIO_PORTD_AMSEL_R &= ~0x10; // disable analog functionality on PD4
+    GPIO_PORTD_PCTL_R &= ~0x000F0000; // PD4 as GPIO
+    IMU_CS = IMU_CS_HIGH;     // deselect imu
 
     // initialize TFT CS
     GPIO_PORTA_DIR_R |= 0x40;         // PA6 = CS
@@ -143,15 +122,6 @@ void SPI_Init(unsigned long CPSDVSR)
     SSI0_CR0_R = (SSI0_CR0_R & ~SSI_CR0_DSS_M) + SSI_CR0_DSS_8;
     SSI0_CR1_R |= SSI_CR1_SSE; // enable SSI
 }
-
-#define FCLK_SLOW()                                              \
-    {                                                            \
-        SSI0_CPSR_R = (SSI0_CPSR_R & ~SSI_CPSR_CPSDVSR_M) + 200; \
-    }
-#define FCLK_FAST()                                            \
-    {                                                          \
-        SSI0_CPSR_R = (SSI0_CPSR_R & ~SSI_CPSR_CPSDVSR_M) + 8; \
-    }
 
 // de-asserts the CS pin to the card
 #define SDC_DESELECT() SDC_CS = SDC_CS_HIGH;
@@ -241,41 +211,43 @@ static void xmit_spi_multi(const BYTE *buff, UINT btx)
 /* wait for ready */
 // Input:  time to wait in ms
 // Output: 1:Ready, 0:Timeout
-static int wait_ready(UINT wt){
-  BYTE d;
-  Timer2 = wt;
-  do {
-    d = xchg_spi(0xFF);
-    /* This loop takes a time. Insert rot_rdq() here for multitask environment. */
-  } while (d != 0xFF && Timer2);  /* Wait for ready or timeout */
-  return (d == 0xFF) ? 1 : 0;
+static int wait_ready(UINT wt)
+{
+    BYTE d;
+    Timer2 = wt;
+    do
+    {
+        d = xchg_spi(0xFF);
+        /* This loop takes a time. Insert rot_rdq() here for multitask environment. */
+    } while (d != 0xFF && Timer2); /* Wait for ready or timeout */
+    return (d == 0xFF) ? 1 : 0;
 }
 
 /* deselect sdc and release spi*/
 static void deselect_SDC(void)
 {
-    SDC_DESELECT();      /* CS = H */
+    SDC_DESELECT(); /* CS = H */
     xchg_spi(0xFF); /* Dummy clock (force DO hi-z for multiple slave SPI) */
 }
 
 /* deselect imu and release spi*/
 static void deselect_IMU(void)
 {
-    IMU_DESELECT();      /* CS = H */
+    IMU_DESELECT(); /* CS = H */
     xchg_spi(0xFF); /* Dummy clock (force DO hi-z for multiple slave SPI) */
 }
 
 /* deselect dac and release spi*/
 static void deselect_DAC(void)
 {
-    DAC_DESELECT();      /* CS = H */
+    DAC_DESELECT(); /* CS = H */
     xchg_spi(0xFF); /* Dummy clock (force DO hi-z for multiple slave SPI) */
 }
 
 /* deselect tft and release spi*/
 static void deselect_TFT(void)
 {
-    TFT_DESELECT();      /* CS = H */
+    TFT_DESELECT(); /* CS = H */
     xchg_spi(0xFF); /* Dummy clock (force DO hi-z for multiple slave SPI) */
 }
 
@@ -342,7 +314,3 @@ static int select_DAC(void)
     DAC_DESELECT();
     return 0; /* Timeout */
 }
-
-
-
-

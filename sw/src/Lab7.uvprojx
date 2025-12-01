@@ -444,6 +444,11 @@
               <FileType>1</FileType>
               <FilePath>..\inc\mpu6500.c</FilePath>
             </File>
+            <File>
+              <FileName>SPI.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\SPI.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

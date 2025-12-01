@@ -127,6 +127,7 @@
 #include "ST7735.h"
 #include "../inc/tm4c123gh6pm.h"
 #include "../inc/hw_types.h"
+#include "../inc/SPI.h"
 
 // 16 rows (0 to 15) and 21 characters (0 to 20)
 // Requires (11 + size*size*6*8) bytes of transmission for each character
@@ -180,9 +181,6 @@ uint16_t StTextColor = ST7735_YELLOW;
 #define ST7735_GMCTRP1 0xE0
 #define ST7735_GMCTRN1 0xE1
 
-#define TFT_CS (*((volatile uint32_t *)0x40004100)) // PA6 bit-band
-#define TFT_CS_LOW 0
-#define TFT_CS_HIGH 0x40
 #define DC (*((volatile uint32_t *)0x40025004)) // PF0 bit-band
 #define DC_COMMAND 0
 #define DC_DATA 0x01
@@ -2057,26 +2055,15 @@ void static commandList(const uint8_t *addr)
   }
 }
 
-#define DAC_CS (*((volatile uint32_t *)0x40004008)) // PA1 bit-band
-#define DAC_CS_LOW 0x00
-#define DAC_CS_HIGH 0x02
-
 // Initialization code common to both 'B' and 'R' type displays
 void static commonInit(const uint8_t *cmdList)
 {
   volatile uint32_t delay;
   ColStart = RowStart = 0; // May be overridden in init func
-
-  SYSCTL_RCGCSSI_R |= 0x01;  // activate SSI0
-  SYSCTL_RCGCGPIO_R |= 0x01; // activate port A
   SYSCTL_RCGCGPIO_R |= 0x20; // activate port F
-  while ((SYSCTL_PRGPIO_R & 0x21) == 0)
+  while ((SYSCTL_PRGPIO_R & 0x20) == 0)
   {
   }; // allow time for clock to start
-
-  GPIO_PORTA_DIR_R |= 0x02; // PA1 output
-  GPIO_PORTA_DEN_R |= 0x02; // PA1 digital enable
-  DAC_CS = DAC_CS_HIGH;     // deselect dac
 
   GPIO_PORTF_LOCK_R = 0x4C4F434B; // unlock GPIO Port F
   GPIO_PORTF_CR_R |= 0x01;        // allow changes to PF0
@@ -2088,12 +2075,6 @@ void static commonInit(const uint8_t *cmdList)
   GPIO_PORTF_AMSEL_R &= ~0x03;      // disable analog
   GPIO_PORTF_PCTL_R &= ~0x000000FF; // PF0-1 as GPIO
 
-  GPIO_PORTA_DIR_R |= 0x40;         // PA6 = CS
-  GPIO_PORTA_AFSEL_R &= ~0x40;      // GPIO
-  GPIO_PORTA_DEN_R |= 0x40;         // digital enable
-  GPIO_PORTA_AMSEL_R &= ~0x40;      // no analog
-  GPIO_PORTA_PCTL_R &= ~0x0F000000; // PA6 as GPIO
-
   TFT_CS = TFT_CS_LOW;
   RESET = RESET_HIGH;
   Delay1ms(500);
@@ -2101,32 +2082,6 @@ void static commonInit(const uint8_t *cmdList)
   Delay1ms(500);
   RESET = RESET_HIGH;
   Delay1ms(500);
-
-  // initialize SSI0
-  GPIO_PORTA_AFSEL_R |= 0x34; // enable alt funct on PA2, PA4, PA5 ONLY
-  GPIO_PORTA_DEN_R |= 0x34;   // enable digital I/O on PA2, PA4, PA5
-                              // configure PA2 (SSI0Clk) and PA4 (SSIORx) and PA5 (SSI0Tx)
-                              // Mask clears nibbles for PA2, PA4, PA5.
-  GPIO_PORTA_PCTL_R = (GPIO_PORTA_PCTL_R & 0xFF0F00FF) + 0x00220200;
-  GPIO_PORTA_AMSEL_R &= ~0x34;
-  SSI0_CR1_R &= ~SSI_CR1_SSE; // disable SSI
-  SSI0_CR1_R &= ~SSI_CR1_MS;  // master mode
-                              // configure for system clock/PLL baud clock source
-  SSI0_CC_R = (SSI0_CC_R & ~SSI_CC_CS_M) + SSI_CC_CS_SYSPLL;
-  //                                        // clock divider for 3.125 MHz SSIClk (50 MHz PIOSC/16)
-  //  SSI0_CPSR_R = (SSI0_CPSR_R&~SSI_CPSR_CPSDVSR_M)+16;
-  // clock divider for 8 MHz SSIClk (80 MHz PLL/24)
-  // SysClk/(CPSDVSR*(1+SCR))
-  // 80/(10*(1+0)) = 8 MHz (slower than 4 MHz)
-  SSI0_CPSR_R = (SSI0_CPSR_R & ~SSI_CPSR_CPSDVSR_M) + 10; // must be even number
-  SSI0_CR0_R &= ~(SSI_CR0_SCR_M |                         // SCR = 0 (8 Mbps data rate)
-                  SSI_CR0_SPH |                           // SPH = 0
-                  SSI_CR0_SPO);                           // SPO = 0
-                                                          // FRF = Freescale format
-  SSI0_CR0_R = (SSI0_CR0_R & ~SSI_CR0_FRF_M) + SSI_CR0_FRF_MOTO;
-  // DSS = 8-bit data
-  SSI0_CR0_R = (SSI0_CR0_R & ~SSI_CR0_DSS_M) + SSI_CR0_DSS_8;
-  SSI0_CR1_R |= SSI_CR1_SSE; // enable SSI
 
   if (cmdList)
     commandList(cmdList);

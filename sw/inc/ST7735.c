@@ -2758,6 +2758,42 @@ void ST7735_SetCursor(uint32_t newX, uint32_t newY)
   StX = newX;
   StY = newY;
 }
+
+//-----------------------ST7735_OutSDec8-----------------------
+void ST7735_OutSDec8(int8_t n)
+{
+  uint32_t temp_n;
+  uint32_t is_negative = 0;
+
+  Messageindex = 0;
+
+  if (n < 0)
+  {
+    is_negative = 1;
+    temp_n = (uint32_t)(-n);
+    Message[Messageindex] = '-';
+    Messageindex++;
+  }
+  else
+  {
+    temp_n = (uint32_t)n;
+  }
+
+  fillmessage(temp_n);
+
+  Message[Messageindex] = 0;
+
+  ST7735_DrawString(StX, StY, Message, StTextColor);
+
+  StX = StX + Messageindex;
+
+  if (StX > 20)
+  {
+    StX = 20;
+    ST7735_DrawCharS(StX * 6, StY * 10, '*', ST7735_RED, ST7735_BLACK, 1);
+  }
+}
+
 //-----------------------ST7735_OutUDec-----------------------
 // Output a 32-bit number in unsigned decimal format
 // Position determined by ST7735_SetCursor command

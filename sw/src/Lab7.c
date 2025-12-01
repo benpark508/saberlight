@@ -50,8 +50,8 @@ GPIOConfig_t PB1Config = {
 
 void debug_serial(void)
 {
-  // CAP1208_ReadCount(1, &count);
-  // CAP1208_GetInputs(&touch);
+  CAP1208_ReadCount(1, &count);
+  CAP1208_GetInputs(&touch);
   printflag = 1;
 }
 
@@ -62,7 +62,7 @@ int main(void)
   PLL_Init(Bus80MHz); // bus clock at 80 MHz
   GPIO_Init(&PB1Config);
   SysTick_Init();
-  // CAP1208_Init();
+  CAP1208_Init();
   MPU6500_Init();                         // initialize MPU6500, deselect cs pin
   ST7735_InitR(INITR_GREENTAB);           // initialize LCD
   Timer0A_Init(debug_serial, 8000000, 2); // print every 100 ms
@@ -80,14 +80,18 @@ int main(void)
       ST7735_SetCursor(0, 0);
       ST7735_OutString("cap1208 demo\n");
       ST7735_OutString("delta: ");
-      ST7735_OutUDec(count);
-
+      ST7735_OutSDec8(count);
+      
+      ST7735_OutString("\ntouch: ");
+      ST7735_OutSDec8(touch);
       if (touch & 0x01)
       {
+        ST7735_OutString("\nYes\n");
         GPIO_Write(GPIO_PORTB_BASE, 1, 0);
       }
       else
       {
+        ST7735_OutString("\nNo\n");
         GPIO_Write(GPIO_PORTB_BASE, 1, 1);
       }
     }

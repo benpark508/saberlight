@@ -16,7 +16,7 @@ GPIOConfig_t PF4Config = {
     .pin        = 4,
     .direction  = GPIO_DIR_INPUT,
     .pull       = false,
-    .openDrain  = true,
+    .openDrain  = false,
     .analog     = false,
     .altFunc    = false,
     .altFuncNum = 0,
@@ -82,10 +82,8 @@ void CAP1208_ReadCount(uint8_t channel, int8_t *count)
 
 void Input_Handler(void) {
     GPIO_ClearInterrupt(GPIO_PORTF_BASE, 4);
-    GPIO_DisableInterrupt(GPIO_PORTF_BASE, 4);
     CAP1208_ReadInputs(&inputStatus);
     CAP1208_ClearINT();
-    GPIO_EnableInterrupt(GPIO_PORTF_BASE, 4);
 }
 
 void CAP1208_Init(void)
@@ -94,10 +92,13 @@ void CAP1208_Init(void)
     GPIO_Init(&PF4Config);
     GPIO_AttachISR(&PF4Config, Input_Handler);
     CAP1208_ClearINT(); // Clear any existing interrupts, active power mode
+    I2C3_BlockWrite(CAP1208_ADDRESS, R_CONFIGURATION2, (uint8_t[]){0b01000000}, 1); //only interrupt on press
+    //I2C3_BlockWrite(CAP1208_ADDRESS, R_REPEAT_EN, (uint8_t[]){0x00}, 1); // Disable repeat for all inputs
     CAP1208_SetSensitivity(3); // Set highest sensitivity, 128x
     CAP1208_EnableInputs(0xFF); // Enable all 8 inputs
     CAP1208_Calibrate(); // Calibrate all inputs
     SysTick80_Wait10ms(30); // wait 300ms for calibration to complete
+    CAP1208_SetThreshold(1, 0);
     CAP1208_ClearINT(); // Clear any existing interrupts, active power mode
     CAP1208_EnableInterrupts(0xFF); // Enable interrupts for all inputs
     GPIO_EnableInterrupt(GPIO_PORTF_BASE, 4);

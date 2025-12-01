@@ -435,11 +435,6 @@
               <FilePath>..\inc\ST7735.c</FilePath>
             </File>
             <File>
-              <FileName>Timer0A.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\inc\Timer0A.c</FilePath>
-            </File>
-            <File>
               <FileName>mpu6500.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\inc\mpu6500.c</FilePath>
@@ -448,6 +443,26 @@
               <FileName>SPI.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\inc\SPI.c</FilePath>
+            </File>
+            <File>
+              <FileName>MCP4821.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\MCP4821.c</FilePath>
+            </File>
+            <File>
+              <FileName>Timer1A.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\Timer1A.c</FilePath>
+            </File>
+            <File>
+              <FileName>music.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\music.c</FilePath>
+            </File>
+            <File>
+              <FileName>Timer0A.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\Timer0A.c</FilePath>
             </File>
           </Files>
         </Group>

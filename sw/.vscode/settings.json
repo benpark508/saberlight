@@ -16,6 +16,9 @@
         "hw_gpio.h": "c",
         "hw_types.h": "c",
         "mpu6500.h": "c",
-        "unified_port_init.h": "c"
+        "unified_port_init.h": "c",
+        "tlv5616.h": "c",
+        "mcp4821.h": "c",
+        "spi.h": "c"
     }
 }

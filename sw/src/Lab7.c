@@ -11,10 +11,12 @@
 #include "../inc/Unified_Port_Init.h"
 #include "../inc/I2C3.h"
 #include "../inc/mpu6500.h"
+#include "../inc/MCP4821.h"
 #include "../inc/cap1208.h"
 #include "../inc/SPI.h"
 #include "../inc/ST7735.h"
-#include "../inc/Timer0A.h"
+#include "../inc/Timer1A.h"
+#include "music.h"
 
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
@@ -34,17 +36,6 @@ volatile uint8_t printflag = 0;
 uint8_t touch = 0;
 int8_t count = 0;
 
-GPIOConfig_t PB1Config = {
-    .portBase = GPIO_PORTB_BASE,
-    .pin = 1,
-    .direction = GPIO_DIR_OUTPUT,
-    .pull = false,
-    .openDrain = false,
-    .analog = false,
-    .altFunc = false,
-    .altFuncNum = 0,
-    .intMode = GPIO_INT_DISABLE};
-
 void debug_serial(void)
 {
   CAP1208_ReadCount(1, &count);
@@ -56,17 +47,18 @@ int main(void)
 {
   DisableInterrupts();
   PLL_Init(Bus80MHz); // bus clock at 80 MHz
-  GPIO_Init(&PB1Config);
   SysTick_Init();
   SPI_Init(200); // initialize SSI0 at 400 kHz
-  FCLK_FAST();   // set SSI0 speed to 10 MHz
   CAP1208_Init();
-  MPU6500_Init();                         // initialize MPU6500, deselect cs pin
+  //MPU6500_Init();                         // initialize MPU6500, deselect cs pin
+  FCLK_LCD();
   ST7735_InitR(INITR_GREENTAB);           // initialize LCD
-  Timer0A_Init(debug_serial, 8000000, 2); // print every 100 ms
+  Timer1A_Init(debug_serial, 8000000, 2); // print every 100 ms
+  //Music_Init();
   EnableInterrupts();
   ST7735_SetCursor(0, 0);
   ST7735_OutString("cap1208 demo\n");
+  //Music_Play();
 
   while (1)
   {
@@ -85,12 +77,10 @@ int main(void)
       if (touch & 0x01)
       {
         ST7735_OutString("\nYes\n");
-        GPIO_Write(GPIO_PORTB_BASE, 1, 0);
       }
       else
       {
         ST7735_OutString("\nNo\n");
-        GPIO_Write(GPIO_PORTB_BASE, 1, 1);
       }
     }
   }

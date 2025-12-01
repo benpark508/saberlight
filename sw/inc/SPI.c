@@ -37,7 +37,7 @@
 
 #include <stdint.h>
 #include "../inc/tm4c123gh6pm.h"
-#include "SPI.h"
+#include "../inc/SPI.h"
 
 static volatile UINT Timer1, Timer2;
 
@@ -144,7 +144,7 @@ void SPI_Init(unsigned long CPSDVSR)
 // Inputs:  byte to be sent to SPI
 // Outputs: byte received from SPI
 // assumes it has been selected with CS low
-static BYTE xchg_spi(BYTE dat)
+BYTE xchg_spi(BYTE dat)
 {
     BYTE volatile rcvdat;
     // wait until SSI0 not busy/transmit FIFO empty
@@ -162,7 +162,7 @@ static BYTE xchg_spi(BYTE dat)
 /* Receive byte */
 // Inputs:  none
 // Outputs: byte received from SPI
-static BYTE rcvr_spi(void)
+BYTE rcvr_spi(void)
 {
     // wait until SSI0 not busy/transmit FIFO empty
     while ((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY)
@@ -179,7 +179,7 @@ static BYTE rcvr_spi(void)
 // Input:  buff Pointer to empty buffer into which data will be received
 //         btr  Number of bytes to receive (even number)
 // Output: none
-static void rcvr_spi_multi(BYTE *buff, UINT btr)
+void rcvr_spi_multi(BYTE *buff, UINT btr)
 {
     while (btr)
     {
@@ -193,7 +193,7 @@ static void rcvr_spi_multi(BYTE *buff, UINT btr)
 // Input:  buff Pointer to the data which will be sent
 //         btx  Number of bytes to send (even number)
 // Output: none
-static void xmit_spi_multi(const BYTE *buff, UINT btx)
+void xmit_spi_multi(const BYTE *buff, UINT btx)
 {
     BYTE volatile rcvdat;
     while (btx)
@@ -211,7 +211,7 @@ static void xmit_spi_multi(const BYTE *buff, UINT btx)
 /* wait for ready */
 // Input:  time to wait in ms
 // Output: 1:Ready, 0:Timeout
-static int wait_ready(UINT wt)
+int wait_ready(UINT wt)
 {
     BYTE d;
     Timer2 = wt;
@@ -224,28 +224,28 @@ static int wait_ready(UINT wt)
 }
 
 /* deselect sdc and release spi*/
-static void deselect_SDC(void)
+void deselect_SDC(void)
 {
     SDC_DESELECT(); /* CS = H */
     xchg_spi(0xFF); /* Dummy clock (force DO hi-z for multiple slave SPI) */
 }
 
 /* deselect imu and release spi*/
-static void deselect_IMU(void)
+void deselect_IMU(void)
 {
     IMU_DESELECT(); /* CS = H */
     xchg_spi(0xFF); /* Dummy clock (force DO hi-z for multiple slave SPI) */
 }
 
 /* deselect dac and release spi*/
-static void deselect_DAC(void)
+void deselect_DAC(void)
 {
     DAC_DESELECT(); /* CS = H */
     xchg_spi(0xFF); /* Dummy clock (force DO hi-z for multiple slave SPI) */
 }
 
 /* deselect tft and release spi*/
-static void deselect_TFT(void)
+void deselect_TFT(void)
 {
     TFT_DESELECT(); /* CS = H */
     xchg_spi(0xFF); /* Dummy clock (force DO hi-z for multiple slave SPI) */
@@ -254,7 +254,7 @@ static void deselect_TFT(void)
 /* select SDC*/
 // Input:  none
 // Output: 1:OK, 0:Timeout in 500ms
-static int select_SDC(void)
+int select_SDC(void)
 {
     IMU_CS = IMU_CS_HIGH; // make sure IMU is off
     DAC_CS = DAC_CS_HIGH; // make sure DAC is off
@@ -270,7 +270,7 @@ static int select_SDC(void)
 /* select TFT*/
 // Input:  none
 // Output: 1:OK, 0:Timeout in 500ms
-static int select_TFT(void)
+int select_TFT(void)
 {
     IMU_CS = IMU_CS_HIGH; // make sure IMU is off
     DAC_CS = DAC_CS_HIGH; // make sure DAC is off
@@ -286,7 +286,7 @@ static int select_TFT(void)
 /* select IMU*/
 // Input:  none
 // Output: 1:OK, 0:Timeout in 500ms
-static int select_IMU(void)
+int select_IMU(void)
 {
     SDC_CS = SDC_CS_HIGH; // make sure IMU is off
     DAC_CS = DAC_CS_HIGH; // make sure DAC is off
@@ -302,7 +302,7 @@ static int select_IMU(void)
 /* select DAC*/
 // Input:  none
 // Output: 1:OK, 0:Timeout in 500ms
-static int select_DAC(void)
+int select_DAC(void)
 {
     IMU_CS = IMU_CS_HIGH; // make sure IMU is off
     SDC_CS = SDC_CS_HIGH; // make sure DAC is off

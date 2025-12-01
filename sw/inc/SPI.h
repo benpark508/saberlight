@@ -56,6 +56,10 @@
     {                                                          \
         SSI0_CPSR_R = (SSI0_CPSR_R & ~SSI_CPSR_CPSDVSR_M) + 8; \
     }
+#define FCLK_LCD()                                              \
+    {                                                           \
+        SSI0_CPSR_R = (SSI0_CPSR_R & ~SSI_CPSR_CPSDVSR_M) + 10; \
+    }
 
 typedef signed int		INT;
 typedef unsigned int	UINT;
@@ -86,17 +90,17 @@ typedef enum
 
 void SPI_Init(unsigned long CPSDVSR);
 
-static BYTE xchg_spi(BYTE dat);
-static BYTE rcvr_spi(void);
-static void rcvr_spi_multi(BYTE *buff, UINT btr);
-static void xmit_spi_multi(const BYTE *buff, UINT btx);
-static int wait_ready(UINT wt);
+BYTE xchg_spi(BYTE dat);
+BYTE rcvr_spi(void);
+void rcvr_spi_multi(BYTE *buff, UINT btr);
+void xmit_spi_multi(const BYTE *buff, UINT btx);
+int wait_ready(UINT wt);
 
-static int select_SDC(void);
-static int select_TFT(void);
-static int select_IMU(void);
-static int select_DAC(void);
-static void deselect_SDC(void);
-static void deselect_TFT(void);
-static void deselect_IMU(void);
-static void deselect_DAC(void);
+int select_SDC(void);
+int select_TFT(void);
+int select_IMU(void);
+int select_DAC(void);
+void deselect_SDC(void);
+void deselect_TFT(void);
+void deselect_IMU(void);
+void deselect_DAC(void);

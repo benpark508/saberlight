@@ -2057,6 +2057,10 @@ void static commandList(const uint8_t *addr)
   }
 }
 
+#define DAC_CS (*((volatile uint32_t *)0x40004008)) // PA1 bit-band
+#define DAC_CS_LOW 0x00
+#define DAC_CS_HIGH 0x02
+
 // Initialization code common to both 'B' and 'R' type displays
 void static commonInit(const uint8_t *cmdList)
 {
@@ -2069,6 +2073,10 @@ void static commonInit(const uint8_t *cmdList)
   while ((SYSCTL_PRGPIO_R & 0x21) == 0)
   {
   }; // allow time for clock to start
+
+  GPIO_PORTA_DIR_R |= 0x02; // PA1 output
+  GPIO_PORTA_DEN_R |= 0x02; // PA1 digital enable
+  DAC_CS = DAC_CS_HIGH;     // deselect dac
 
   GPIO_PORTF_LOCK_R = 0x4C4F434B; // unlock GPIO Port F
   GPIO_PORTF_CR_R |= 0x01;        // allow changes to PF0

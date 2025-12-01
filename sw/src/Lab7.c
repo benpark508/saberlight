@@ -12,6 +12,7 @@
 #include "../inc/I2C3.h"
 #include "../inc/mpu6500.h"
 #include "../inc/cap1208.h"
+#include "../inc/SPI.h"
 #include "../inc/ST7735.h"
 #include "../inc/Timer0A.h"
 

@@ -2103,12 +2103,12 @@ void static commonInit(const uint8_t *cmdList)
   Delay1ms(500);
 
   // initialize SSI0
-  GPIO_PORTA_AFSEL_R |= 0x24; // enable alt funct on PA2, PA5 ONLY
-  GPIO_PORTA_DEN_R |= 0x24;   // enable digital I/O on PA2, PA5
-                              // configure PA2 (SSI0Clk) and PA5 (SSI0Tx)
-                              // Mask clears nibbles for PA2, PA3, PA5. We only add back PA2 and PA5.
-  GPIO_PORTA_PCTL_R = (GPIO_PORTA_PCTL_R & 0xFF0F00FF) + 0x00200200;
-  GPIO_PORTA_AMSEL_R &= ~0x24;
+  GPIO_PORTA_AFSEL_R |= 0x34; // enable alt funct on PA2, PA4, PA5 ONLY
+  GPIO_PORTA_DEN_R |= 0x34;   // enable digital I/O on PA2, PA4, PA5
+                              // configure PA2 (SSI0Clk) and PA4 (SSIORx) and PA5 (SSI0Tx)
+                              // Mask clears nibbles for PA2, PA4, PA5.
+  GPIO_PORTA_PCTL_R = (GPIO_PORTA_PCTL_R & 0xFF0F00FF) + 0x00220200;
+  GPIO_PORTA_AMSEL_R &= ~0x34;
   SSI0_CR1_R &= ~SSI_CR1_SSE; // disable SSI
   SSI0_CR1_R &= ~SSI_CR1_MS;  // master mode
                               // configure for system clock/PLL baud clock source
@@ -2787,6 +2787,40 @@ void ST7735_OutSDec8(int8_t n)
 
   StX = StX + Messageindex;
 
+  if (StX > 20)
+  {
+    StX = 20;
+    ST7735_DrawCharS(StX * 6, StY * 10, '*', ST7735_RED, ST7735_BLACK, 1);
+  }
+}
+
+void ST7735_OutSDec16(int16_t n)
+{
+  uint32_t temp_n;
+
+  Messageindex = 0;
+
+  if (n < 0)
+  {
+    // Cast to int32_t before negating to safely handle -32768
+    temp_n = (uint32_t)(-(int32_t)n);
+    Message[Messageindex] = '-';
+    Messageindex++;
+  }
+  else
+  {
+    temp_n = (uint32_t)n;
+  }
+
+  fillmessage(temp_n);
+
+  Message[Messageindex] = 0; // Null terminate
+
+  ST7735_DrawString(StX, StY, Message, StTextColor);
+
+  StX = StX + Messageindex;
+
+  // Check for line overflow (assuming 20 chars max width)
   if (StX > 20)
   {
     StX = 20;

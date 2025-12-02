@@ -129,6 +129,9 @@
 #include "../inc/hw_types.h"
 #include "../inc/SPI.h"
 
+void DisableInterrupts(void); // Disable interrupts
+void EnableInterrupts(void);  // Enable interrupts
+
 // 16 rows (0 to 15) and 21 characters (0 to 20)
 // Requires (11 + size*size*6*8) bytes of transmission for each character
 uint32_t StX = 0; // position along the horizonal axis 0 to 20
@@ -1838,26 +1841,36 @@ static int16_t _height = ST7735_TFTHEIGHT;
 // the SSI0 module is not initialized and enabled.
 void static writecommand(uint8_t c)
 {
+  DisableInterrupts();
   // wait until SSI0 not busy/transmit FIFO empty
   while ((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY)
   {
   };
-  TFT_CS = TFT_CS_LOW;
+  select_TFT();
   DC = DC_COMMAND;
   SSI0_DR_R = c; // data out
                  // wait until SSI0 not busy/transmit FIFO empty
   while ((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY)
   {
   };
+  EnableInterrupts();
 }
 
 void static writedata(uint8_t c)
 {
+  DisableInterrupts();
   while ((SSI0_SR_R & SSI_SR_TNF) == 0)
   {
-  }; // wait until transmit FIFO not full
+  };
+
+  select_TFT();
+
   DC = DC_DATA;
-  SSI0_DR_R = c; // data out
+  SSI0_DR_R = c;
+  while ((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY)
+  {
+  };
+  EnableInterrupts();
 }
 
 void static deselect(void)
@@ -1866,7 +1879,7 @@ void static deselect(void)
   while ((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY)
   {
   };
-  TFT_CS = TFT_CS_HIGH;
+  deselect_TFT();
 }
 
 // Subroutine to wait 1 msec
@@ -2059,7 +2072,7 @@ void static commandList(const uint8_t *addr)
 void static commonInit(const uint8_t *cmdList)
 {
   volatile uint32_t delay;
-  ColStart = RowStart = 0; // May be overridden in init func
+  ColStart = RowStart = 0;   // May be overridden in init func
   SYSCTL_RCGCGPIO_R |= 0x20; // activate port F
   while ((SYSCTL_PRGPIO_R & 0x20) == 0)
   {
@@ -2075,7 +2088,7 @@ void static commonInit(const uint8_t *cmdList)
   GPIO_PORTF_AMSEL_R &= ~0x03;      // disable analog
   GPIO_PORTF_PCTL_R &= ~0x000000FF; // PF0-1 as GPIO
 
-  TFT_CS = TFT_CS_LOW;
+  select_TFT();
   RESET = RESET_HIGH;
   Delay1ms(500);
   RESET = RESET_LOW;

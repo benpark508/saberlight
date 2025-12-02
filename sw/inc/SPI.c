@@ -87,13 +87,13 @@ void SPI_Init(unsigned long CPSDVSR)
     DAC_CS = DAC_CS_HIGH;             // deselect dac
 
     // initialize SDC CS
-    GPIO_PORTA_PUR_R |= 0x80;  // enable weak pullup on PB0
-    GPIO_PORTB_DIR_R |= 0x80;  // make PB0 output
-    GPIO_PORTB_DR4R_R |= 0x80; // 4mA output on outputs
+    GPIO_PORTA_PUR_R |= 0x80;  // enable weak pullup on PA7
+    GPIO_PORTA_DIR_R |= 0x80;  // make PA7 output
+    GPIO_PORTA_DR4R_R |= 0x80; // 4mA output on outputs
     SDC_CS = SDC_CS_HIGH;      // deselect SDC
-    GPIO_PORTB_PCTL_R &= ~0xF0000000;
-    GPIO_PORTB_AMSEL_R &= ~0x80; // disable analog functionality on PB0
-    GPIO_PORTB_DEN_R |= 0x80;    // enable digital I/O on PB0
+    GPIO_PORTA_PCTL_R &= ~0xF0000000;
+    GPIO_PORTA_AMSEL_R &= ~0x80; // disable analog functionality on PA7
+    GPIO_PORTA_DEN_R |= 0x80;    // enable digital I/O on PA7
 
     // initialize SSI0
     GPIO_PORTA_AFSEL_R |= 0x34; // enable alt funct on PA2,4,5
@@ -148,7 +148,7 @@ BYTE xchg_spi(BYTE dat)
 {
     BYTE volatile rcvdat;
     // wait until SSI0 not busy/transmit FIFO empty
-    while ((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY)
+    while ((SSI0_SR_R & SSI_SR_TNF) == 0) {} // wait until transmit FIFO is not full
     {
     };
     SSI0_DR_R = dat; // data out
@@ -272,15 +272,12 @@ int select_SDC(void)
 // Output: 1:OK, 0:Timeout in 500ms
 int select_TFT(void)
 {
+    while((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY){};
     IMU_CS = IMU_CS_HIGH; // make sure IMU is off
     DAC_CS = DAC_CS_HIGH; // make sure DAC is off
     SDC_CS = SDC_CS_HIGH; // make sure SDC is off
     TFT_SELECT();
-    xchg_spi(0xFF); /* Dummy clock (force DO enabled) */
-    if (wait_ready(500))
-        return 1; /* OK */
-    TFT_DESELECT();
-    return 0; /* Timeout */
+    return 1;
 }
 
 /* select IMU*/
@@ -288,15 +285,12 @@ int select_TFT(void)
 // Output: 1:OK, 0:Timeout in 500ms
 int select_IMU(void)
 {
-    SDC_CS = SDC_CS_HIGH; // make sure IMU is off
+    while((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY){};
+    SDC_CS = SDC_CS_HIGH; // make sure SDC is off
     DAC_CS = DAC_CS_HIGH; // make sure DAC is off
     TFT_CS = TFT_CS_HIGH; // make sure TFT is off
     IMU_SELECT();
-    xchg_spi(0xFF); /* Dummy clock (force DO enabled) */
-    if (wait_ready(500))
-        return 1; /* OK */
-    IMU_DESELECT();
-    return 0; /* Timeout */
+    return 1;
 }
 
 /* select DAC*/
@@ -304,13 +298,10 @@ int select_IMU(void)
 // Output: 1:OK, 0:Timeout in 500ms
 int select_DAC(void)
 {
+    while((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY){};
     IMU_CS = IMU_CS_HIGH; // make sure IMU is off
-    SDC_CS = SDC_CS_HIGH; // make sure DAC is off
+    SDC_CS = SDC_CS_HIGH; // make sure SDC is off
     TFT_CS = TFT_CS_HIGH; // make sure TFT is off
     DAC_SELECT();
-    xchg_spi(0xFF); /* Dummy clock (force DO enabled) */
-    if (wait_ready(500))
-        return 1; /* OK */
-    DAC_DESELECT();
-    return 0; /* Timeout */
+    return 1;
 }

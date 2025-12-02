@@ -7,55 +7,60 @@
 #include "../inc/MCP4821.h"
 #include "../inc/SPI.h"
 
-// =======================
-//  Helper: Delay 1 cycle
-// =======================
-static inline void CS_LOW(void){
-  GPIO_PORTA_DATA_R &= ~0x02;   // PA1 = 0
-}
-static inline void CS_HIGH(void){
-  GPIO_PORTA_DATA_R |= 0x02;    // PA1 = 1
-}
-
-
 //=========================================
 // Initialize SSI0 + PA1 for MCP4821 DAC
 //=========================================
-void DAC_Init(uint16_t initial){
+void DAC_Init(uint16_t initial)
+{
   uint16_t cmd = 0x3000 | (initial & 0x0FFF);
-  CS_LOW();
+  deselect_DAC();
   SSI0_DR_R = cmd;
-  while((SSI0_SR_R & SSI_SR_TFE) == 0){};   // wait empty
-  CS_HIGH();
+  while ((SSI0_SR_R & SSI_SR_TFE) == 0)
+  {
+  }; // wait empty
 }
-
 
 //=========================================
 // Write to DAC (blocking)
 //=========================================
-void DAC_Out(uint16_t code){
+void DAC_Out(uint16_t code)
+{
+  while ((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY)
+  {
+  };
   uint16_t command = 0x3000 | (code & 0x0FFF);
 
   // Wait for room in FIFO
-  while((SSI0_SR_R & SSI_SR_TNF) == 0){}
+  while ((SSI0_SR_R & SSI_SR_TNF) == 0)
+  {
+  }
 
-  CS_LOW();
-  SSI0_DR_R = command;
+  select_DAC();
+  while ((SSI0_SR_R & SSI_SR_TNF) == 0)
+  {
+  };
+  SSI0_DR_R = command >> 8;
+  while ((SSI0_SR_R & SSI_SR_TNF) == 0)
+  {
+  };
+  SSI0_DR_R = command & 0xFF;
 
   // Must wait for transmission to finish before releasing CS
-  while((SSI0_SR_R & SSI_SR_BSY) != 0){}
-  CS_HIGH();
+  while ((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY)
+  {
+  };
+  deselect_DAC();
 }
-
 
 //=========================================
 // Write to DAC (non-blocking)
 //  (caller must ensure FIFO has room)
 //=========================================
-void DAC_Out_NB(uint16_t code){
+void DAC_Out_NB(uint16_t code)
+{
   uint16_t command = 0x3000 | (code & 0x0FFF);
 
-  CS_LOW();
+  select_DAC();
   SSI0_DR_R = command;
   // Do NOT release CS � caller must handle timing
 }

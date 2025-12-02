@@ -35,11 +35,10 @@ processed_imu imu_proc;
 volatile uint8_t printflag = 0;
 uint8_t touch = 0;
 int8_t count = 0;
+extern volatile uint8_t go;
 
 void debug_serial(void)
 {
-  CAP1208_ReadCount(1, &count);
-  CAP1208_GetInputs(&touch);
   printflag = 1;
 }
 
@@ -57,8 +56,19 @@ int main(void)
   Timer1A_Init(debug_serial, 8000000, 2); // print every 100 ms
   Music_Init();
   EnableInterrupts();
+  ST7735_FillScreen(ST7735_BLACK);
   ST7735_SetCursor(0, 0);
-  ST7735_OutString("cap1208 demo\n");
+  ST7735_OutString("cap1208 demo");
+
+  ST7735_SetCursor(0, 2); // Line 2
+  ST7735_OutString("Delta: ");
+
+  ST7735_SetCursor(0, 4); // Line 4
+  ST7735_OutString("Touch: ");
+
+  ST7735_SetCursor(0, 6); // Line 6
+  ST7735_OutString("Pad 1: ");
+
   Music_Play();
 
   while (1)
@@ -67,21 +77,35 @@ int main(void)
     {
       printflag = 0;
 
-      ST7735_FillRect(0, 0, ST7735_TFTWIDTH, 64, ST7735_BLACK); // clear text area
-      ST7735_SetCursor(0, 0);
-      ST7735_OutString("cap1208 demo\n");
-      ST7735_OutString("delta: ");
+      CAP1208_ReadCount(1, &count);
+
+      ST7735_SetCursor(7, 2);
       ST7735_OutSDec8(count);
-      
-      ST7735_OutString("\ntouch: ");
+      ST7735_OutString("   ");
+
+      ST7735_SetCursor(7, 4);
       ST7735_OutSDec8(touch);
+      ST7735_OutString("  ");
+
+      ST7735_SetCursor(7, 6);
       if (touch & 0x01)
       {
-        ST7735_OutString("\nYes\n");
+        ST7735_SetTextColor(ST7735_GREEN);
+        ST7735_OutString("YES");
       }
       else
       {
-        ST7735_OutString("\nNo\n");
+        ST7735_SetTextColor(ST7735_RED);
+        ST7735_OutString("NO ");
+
+        ST7735_SetTextColor(ST7735_YELLOW);
+      }
+
+      if (go)
+      {
+        go = 0;
+        CAP1208_ReadInputs(&touch);
+        CAP1208_ClearINT();
       }
     }
   }

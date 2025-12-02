@@ -9,6 +9,7 @@
 #include "../inc/SysTick.h"
 #include "../inc/GPIO_HAL.h"
 
+volatile uint8_t go;
 uint8_t inputStatus = 0;
 
 GPIOConfig_t PF4Config = {
@@ -82,8 +83,7 @@ void CAP1208_ReadCount(uint8_t channel, int8_t *count)
 
 void Input_Handler(void) {
     GPIO_ClearInterrupt(GPIO_PORTF_BASE, 4);
-    CAP1208_ReadInputs(&inputStatus);
-    CAP1208_ClearINT();
+    go = 1;
 }
 
 void CAP1208_Init(void)
@@ -97,7 +97,7 @@ void CAP1208_Init(void)
     CAP1208_SetSensitivity(3); // Set highest sensitivity, 128x
     CAP1208_EnableInputs(0xFF); // Enable all 8 inputs
     CAP1208_Calibrate(); // Calibrate all inputs
-    SysTick80_Wait10ms(30); // wait 300ms for calibration to complete
+    SysTick80_Wait10ms(50); // wait 300ms for calibration to complete
     CAP1208_SetThreshold(1, 0);
     CAP1208_ClearINT(); // Clear any existing interrupts, active power mode
     CAP1208_EnableInterrupts(0xFF); // Enable interrupts for all inputs

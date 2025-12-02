@@ -19,6 +19,7 @@
         "unified_port_init.h": "c",
         "tlv5616.h": "c",
         "mcp4821.h": "c",
-        "spi.h": "c"
+        "spi.h": "c",
+        "st7735.h": "c"
     }
 }

@@ -445,11 +445,6 @@
               <FilePath>..\inc\SPI.c</FilePath>
             </File>
             <File>
-              <FileName>MCP4821.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\inc\MCP4821.c</FilePath>
-            </File>
-            <File>
               <FileName>Timer1A.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\inc\Timer1A.c</FilePath>
@@ -460,9 +455,9 @@
               <FilePath>.\music.c</FilePath>
             </File>
             <File>
-              <FileName>Timer0A.c</FileName>
+              <FileName>MCP4821.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\inc\Timer0A.c</FilePath>
+              <FilePath>..\inc\MCP4821.c</FilePath>
             </File>
           </Files>
         </Group>

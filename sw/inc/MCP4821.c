@@ -23,10 +23,10 @@ static inline void CS_HIGH(void){
 //=========================================
 void DAC_Init(uint16_t initial){
   uint16_t cmd = 0x3000 | (initial & 0x0FFF);
-  select_DAC();
+  CS_LOW();
   SSI0_DR_R = cmd;
   while((SSI0_SR_R & SSI_SR_TFE) == 0){};   // wait empty
-  deselect_DAC();
+  CS_HIGH();
 }
 
 
@@ -39,12 +39,12 @@ void DAC_Out(uint16_t code){
   // Wait for room in FIFO
   while((SSI0_SR_R & SSI_SR_TNF) == 0){}
 
-  select_DAC();
+  CS_LOW();
   SSI0_DR_R = command;
 
   // Must wait for transmission to finish before releasing CS
   while((SSI0_SR_R & SSI_SR_BSY) != 0){}
-  deselect_DAC();
+  CS_HIGH();
 }
 
 
@@ -55,7 +55,7 @@ void DAC_Out(uint16_t code){
 void DAC_Out_NB(uint16_t code){
   uint16_t command = 0x3000 | (code & 0x0FFF);
 
-  select_DAC();
+  CS_LOW();
   SSI0_DR_R = command;
   // Do NOT release CS � caller must handle timing
 }

@@ -46,19 +46,20 @@ void debug_serial(void)
 int main(void)
 {
   DisableInterrupts();
+  Unified_Port_Init();
   PLL_Init(Bus80MHz); // bus clock at 80 MHz
   SysTick_Init();
   SPI_Init(200); // initialize SSI0 at 400 kHz
   CAP1208_Init();
-  //MPU6500_Init();                         // initialize MPU6500, deselect cs pin
+  MPU6500_Init();
   FCLK_LCD();
   ST7735_InitR(INITR_GREENTAB);           // initialize LCD
   Timer1A_Init(debug_serial, 8000000, 2); // print every 100 ms
-  //Music_Init();
+  Music_Init();
   EnableInterrupts();
   ST7735_SetCursor(0, 0);
   ST7735_OutString("cap1208 demo\n");
-  //Music_Play();
+  Music_Play();
 
   while (1)
   {

@@ -129,8 +129,8 @@
 #include "../inc/hw_types.h"
 #include "../inc/SPI.h"
 
-void DisableInterrupts(void); // Disable interrupts
-void EnableInterrupts(void);  // Enable interrupts
+long StartCritical(void);
+void EndCritical(long sr);
 
 // 16 rows (0 to 15) and 21 characters (0 to 20)
 // Requires (11 + size*size*6*8) bytes of transmission for each character
@@ -1841,7 +1841,7 @@ static int16_t _height = ST7735_TFTHEIGHT;
 // the SSI0 module is not initialized and enabled.
 void static writecommand(uint8_t c)
 {
-  DisableInterrupts();
+  long sr = StartCritical();
   // wait until SSI0 not busy/transmit FIFO empty
   while ((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY)
   {
@@ -1853,12 +1853,13 @@ void static writecommand(uint8_t c)
   while ((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY)
   {
   };
-  EnableInterrupts();
+  volatile uint32_t dummy = SSI0_DR_R;
+  EndCritical(sr);
 }
 
 void static writedata(uint8_t c)
 {
-  DisableInterrupts();
+  long sr = StartCritical();
   while ((SSI0_SR_R & SSI_SR_TNF) == 0)
   {
   };
@@ -1870,7 +1871,8 @@ void static writedata(uint8_t c)
   while ((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY)
   {
   };
-  EnableInterrupts();
+  volatile uint32_t dummy = SSI0_DR_R;
+  EndCritical(sr);
 }
 
 void static deselect(void)
@@ -2728,16 +2730,16 @@ void ST7735_SetCursor(uint32_t newX, uint32_t newY)
 }
 
 //-----------------------ST7735_OutSDec8-----------------------
+// Output a 8-bit signed number (-128 to 127)
 void ST7735_OutSDec8(int8_t n)
 {
   uint32_t temp_n;
-  uint32_t is_negative = 0;
 
   Messageindex = 0;
 
   if (n < 0)
   {
-    is_negative = 1;
+    // -(-128) fits in standard 32-bit int, so this is safe
     temp_n = (uint32_t)(-n);
     Message[Messageindex] = '-';
     Messageindex++;
@@ -2749,7 +2751,7 @@ void ST7735_OutSDec8(int8_t n)
 
   fillmessage(temp_n);
 
-  Message[Messageindex] = 0;
+  Message[Messageindex] = 0; // Null terminate
 
   ST7735_DrawString(StX, StY, Message, StTextColor);
 
@@ -2762,6 +2764,8 @@ void ST7735_OutSDec8(int8_t n)
   }
 }
 
+//-----------------------ST7735_OutSDec16-----------------------
+// Output a 16-bit signed number (-32768 to 32767)
 void ST7735_OutSDec16(int16_t n)
 {
   uint32_t temp_n;
@@ -2771,6 +2775,7 @@ void ST7735_OutSDec16(int16_t n)
   if (n < 0)
   {
     // Cast to int32_t before negating to safely handle -32768
+    // (Though standard integer promotion usually handles this on ARM)
     temp_n = (uint32_t)(-(int32_t)n);
     Message[Messageindex] = '-';
     Messageindex++;
@@ -2788,7 +2793,6 @@ void ST7735_OutSDec16(int16_t n)
 
   StX = StX + Messageindex;
 
-  // Check for line overflow (assuming 20 chars max width)
   if (StX > 20)
   {
     StX = 20;

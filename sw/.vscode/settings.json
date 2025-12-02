@@ -20,6 +20,9 @@
         "tlv5616.h": "c",
         "mcp4821.h": "c",
         "spi.h": "c",
-        "st7735.h": "c"
+        "st7735.h": "c",
+        "diskio.h": "c",
+        "integer.h": "c",
+        "ffconf.h": "c"
     }
 }

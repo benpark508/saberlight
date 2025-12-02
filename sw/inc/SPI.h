@@ -12,6 +12,8 @@
  *****************************************************************************
 */
 
+#include "../inc/integer.h"
+
 #define SSI_CR0_SCR_M 0x0000FF00      // SSI Serial Clock Rate
 #define SSI_CR0_SPH 0x00000080        // SSI Serial Clock Phase
 #define SSI_CR0_SPO 0x00000040        // SSI Serial Clock Polarity
@@ -61,23 +63,6 @@
         SSI0_CPSR_R = (SSI0_CPSR_R & ~SSI_CPSR_CPSDVSR_M) + 10; \
     }
 
-typedef signed int		INT;
-typedef unsigned int	UINT;
-
-/* These types are assumed as 8-bit integer */
-typedef signed char CHAR;
-typedef unsigned char UCHAR;
-typedef unsigned char BYTE;
-
-/* These types are assumed as 16-bit integer */
-typedef signed short SHORT;
-typedef unsigned short USHORT;
-typedef unsigned short WORD;
-
-/* These types are assumed as 32-bit integer */
-typedef signed long LONG;
-typedef unsigned long ULONG;
-typedef unsigned long DWORD;
 
 /**
  * \brief Boolean type

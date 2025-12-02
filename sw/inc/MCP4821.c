@@ -13,11 +13,12 @@
 void DAC_Init(uint16_t initial)
 {
   uint16_t cmd = 0x3000 | (initial & 0x0FFF);
-  deselect_DAC();
+  select_DAC();
   SSI0_DR_R = cmd;
   while ((SSI0_SR_R & SSI_SR_TFE) == 0)
   {
   }; // wait empty
+  deselect_DAC();
 }
 
 //=========================================
@@ -49,6 +50,9 @@ void DAC_Out(uint16_t code)
   while ((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY)
   {
   };
+  volatile uint32_t dummy;
+  dummy = SSI0_DR_R;
+  dummy = SSI0_DR_R;
   deselect_DAC();
 }
 

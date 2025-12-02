@@ -177,6 +177,8 @@ void ST7735_DrawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color);
 
 void ST7735_OutSDec8(int8_t n);
 
+void ST7735_OutSDec16(int16_t n);
+
 //------------ST7735_DrawFastHLine------------
 // Draw a horizontal line at the given coordinates with the given width and color.
 // A horizontal line is parallel to the shorter side of the rectangular display

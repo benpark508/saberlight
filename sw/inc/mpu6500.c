@@ -9,12 +9,16 @@
 #include "../inc/SysTick.h"
 #include "../inc/tm4c123gh6pm.h"
 #include "../inc/hw_types.h"
+#include "../inc/SPI.h"
 
 #define MPU_CS (*((volatile uint32_t *)0x40007040)) // PD4 bit-band
 #define MPU_CS_LOW 0x00
 #define MPU_CS_HIGH 0x10
 #define MPU_READ 0x80
 #define MPU_WRITE 0x00
+
+long StartCritical(void);
+void EndCritical(long sr);
 
 void WaitForSSI0Idle(void)
 {
@@ -28,94 +32,142 @@ void WaitForSSI0Idle(void)
 
 void MPU6500_Init(void)
 {
-    /*
-    // 3. Perform Reset & Configuration
-    uint32_t lcd_speed = SSI0_CPSR_R; // Save LCD speed
-    WaitForSSI0Idle();
-    SSI0_CPSR_R = 80;
+    long sr = StartCritical();
 
-    MPU6500_WriteReg(PWR_MGMT_1, 0x80);
+    while ((SSI0_SR_R & 0x10) == 0x10)
+    {
+    };
+
+    FCLK_SLOW();
+
+    select_IMU();
+
+    uint8_t who_am_i = MPU6500_ReadReg(WHO_AM_I);
+    if (who_am_i != 0x70)
+    {
+        // Communication error or wrong chip! Loop indefinitely or flag an error.
+        while (1)
+        {
+            // Blink an LED here for visual debug
+        }
+    }
+
+    xchg_spi(PWR_MGMT_1 | MPU_WRITE);
+    xchg_spi(0x80); // Reset
+    deselect_IMU();
+
+    while ((SSI0_SR_R & 0x10) == 0x10)
+    {
+    };
+
+    FCLK_LCD();
+
+    EndCritical(sr);
+
     SysTick80_Wait10ms(50); // wait 500 ms
 
-    MPU6500_WriteReg(PWR_MGMT_1, 0x00);
+    sr = StartCritical();
 
-    MPU6500_WriteReg(CONFIG, 0x03); // DLPF_CFG = 3
+    while ((SSI0_SR_R & 0x10) == 0x10)
+    {
+    };
 
-    MPU6500_WriteReg(ACCEL_CONFIG, 0x10); // ±8g
+    FCLK_SLOW();
 
-    MPU6500_WriteReg(GYRO_CONFIG, 0x08); // ±500°/s
+    select_IMU();
+    xchg_spi(PWR_MGMT_1 | MPU_WRITE);
+    xchg_spi(0x00); // Wake Up
+    deselect_IMU();
 
-    WaitForSSI0Idle();
-    SSI0_CPSR_R = lcd_speed;
-    */
+    select_IMU();
+    xchg_spi(CONFIG | MPU_WRITE);
+    xchg_spi(0x03); // DLPF
+    deselect_IMU();
+
+    select_IMU();
+    xchg_spi(ACCEL_CONFIG | MPU_WRITE);
+    xchg_spi(0x10); // 8g
+    deselect_IMU();
+
+    select_IMU();
+    xchg_spi(GYRO_CONFIG | MPU_WRITE);
+    xchg_spi(0x08); // 500dps
+    deselect_IMU();
+
+    while ((SSI0_SR_R & 0x10) == 0x10)
+    {
+    };
+
+    FCLK_LCD();
+
+    EndCritical(sr);
 }
 
 void MPU6500_WriteReg(uint8_t reg, uint8_t data)
 {
+    long sr = StartCritical();
 
-    WaitForSSI0Idle();
-    MPU_CS = MPU_CS_LOW;
-
-    while ((SSI0_SR_R & 0x02) == 0)
-    {
-    }; // Wait for TX FIFO space
-    SSI0_DR_R = reg | MPU_WRITE;
-
-    while ((SSI0_SR_R & 0x02) == 0)
+    while ((SSI0_SR_R & 0x10) == 0x10)
     {
     };
-    SSI0_DR_R = data;
 
-    WaitForSSI0Idle();
+    FCLK_SLOW();
+    select_IMU();              // CS Low
+    xchg_spi(reg | MPU_WRITE); // Send Register Address
+    xchg_spi(data);            // Send Data
+    deselect_IMU();            // CS High
 
-    uint8_t trash;
-    while ((SSI0_SR_R & 0x04) != 0)
-    { // While RX FIFO not empty
-        trash = SSI0_DR_R;
-    }
+    while ((SSI0_SR_R & 0x10) == 0x10)
+    {
+    };
 
-    MPU_CS = MPU_CS_HIGH;
+    FCLK_LCD();
+    EndCritical(sr);
 }
 
 // Read a register
 uint8_t MPU6500_ReadReg(uint8_t reg)
 {
-    uint8_t trash, result;
+    long sr = StartCritical();
 
-    WaitForSSI0Idle();
-    MPU_CS = MPU_CS_LOW; // Select MPU
-
-    // 1. Send Register Address (Read)
-    while ((SSI0_SR_R & 0x02) == 0)
+    while ((SSI0_SR_R & 0x10) == 0x10)
     {
     };
-    SSI0_DR_R = reg | MPU_READ;
 
-    // 2. Send Dummy Byte (to generate clock for MPU to send data)
-    while ((SSI0_SR_R & 0x02) == 0)
+    FCLK_SLOW();
+    uint8_t result;
+    select_IMU();             // CS Low
+    xchg_spi(reg | MPU_READ); // Send Register Address (Read Bit Set)
+    result = xchg_spi(0xFF);  // Send Dummy to clock in data
+    deselect_IMU();           // CS High
+
+    while ((SSI0_SR_R & 0x10) == 0x10)
     {
     };
-    SSI0_DR_R = 0x00;
 
-    WaitForSSI0Idle();
-
-    // 3. Read FIFO
-    // We sent 2 bytes, we expect 2 bytes back.
-    // Byte 1: Garbage (Response to Register Address)
-    // Byte 2: Data (Response to Dummy Byte)
-
-    while ((SSI0_SR_R & 0x04) == 0)
-    {
-    }; // Wait for RX Data
-    trash = SSI0_DR_R;
-
-    while ((SSI0_SR_R & 0x04) == 0)
-    {
-    }; // Wait for RX Data
-    result = SSI0_DR_R;
-
-    MPU_CS = MPU_CS_HIGH; // Deselect
+    FCLK_LCD();
+    EndCritical(sr);
     return result;
+}
+
+void MPU6500_ReadBlock(uint8_t reg, uint8_t *data, uint8_t length)
+{
+    long sr = StartCritical();
+
+    while ((SSI0_SR_R & 0x10) == 0x10)
+    {
+    };
+
+    select_IMU();             // CS Low
+    xchg_spi(reg | MPU_READ); // Send Start Register Address
+
+    for (int i = 0; i < length; i++)
+    {
+        data[i] = xchg_spi(0xFF); // Send Dummy to clock in data
+    }
+
+    deselect_IMU(); // CS High
+    EndCritical(sr);
 }
 
 void MPU6500_calibrate(uint16_t numCalPoints, processed_imu *imu_processed_data)
@@ -168,14 +220,20 @@ void MPU6500_getData(raw_imu *rData, processed_imu *pData)
 
 void MPU6500_read_accel(raw_imu *imu_raw_data)
 {
-    imu_raw_data->accel_x = (int16_t)((MPU6500_ReadReg(ACCEL_XOUT_H) << 8) | MPU6500_ReadReg(ACCEL_XOUT_L));
-    imu_raw_data->accel_y = (int16_t)((MPU6500_ReadReg(ACCEL_YOUT_H) << 8) | MPU6500_ReadReg(ACCEL_YOUT_L));
-    imu_raw_data->accel_z = (int16_t)((MPU6500_ReadReg(ACCEL_ZOUT_H) << 8) | MPU6500_ReadReg(ACCEL_ZOUT_L));
+    uint8_t imu_data[6];
+    MPU6500_ReadBlock(ACCEL_XOUT_H, imu_data, 6);
+
+    imu_raw_data->accel_x = (int16_t)(((uint16_t)imu_data[0] << 8) | imu_data[1]);
+    imu_raw_data->accel_y = (int16_t)(((uint16_t)imu_data[2] << 8) | imu_data[3]);
+    imu_raw_data->accel_z = (int16_t)(((uint16_t)imu_data[4] << 8) | imu_data[5]);
 }
 
 void MPU6500_read_gyro(raw_imu *imu_raw_data)
 {
-    imu_raw_data->gyro_x = (int16_t)((MPU6500_ReadReg(GYRO_XOUT_H) << 8) | MPU6500_ReadReg(GYRO_XOUT_L));
-    imu_raw_data->gyro_y = (int16_t)((MPU6500_ReadReg(GYRO_YOUT_H) << 8) | MPU6500_ReadReg(GYRO_YOUT_L));
-    imu_raw_data->gyro_z = (int16_t)((MPU6500_ReadReg(GYRO_ZOUT_H) << 8) | MPU6500_ReadReg(GYRO_ZOUT_L));
+    uint8_t imu_data[6];
+    MPU6500_ReadBlock(GYRO_XOUT_H, imu_data, 6);
+
+    imu_raw_data->gyro_x = (int16_t)(((uint16_t)imu_data[0] << 8) | imu_data[1]);
+    imu_raw_data->gyro_y = (int16_t)(((uint16_t)imu_data[2] << 8) | imu_data[3]);
+    imu_raw_data->gyro_z = (int16_t)(((uint16_t)imu_data[4] << 8) | imu_data[5]);
 }

@@ -50,6 +50,22 @@
 #define I2C_MCR_MFE             0x00000010  // I2C Master Function Enable
 #define MAXRETRIES              5           // number of receive attempts before giving up
 
+#define I2C_TIMEOUT 10000 
+
+int I2C3_WaitBusy(void){
+    uint32_t timeout = I2C_TIMEOUT;
+    while( (I2C3_MCS_R & I2C_MCS_BUSY) && (timeout > 0)){
+        timeout--;
+    }
+    if(timeout == 0){
+        // Bus is stuck!
+        // Optional: Force a Stop condition to try and reset
+        I2C3_MCS_R = I2C_MCS_STOP; 
+        return -1; // Error
+    }
+    return 0; // Success
+}
+
 // let t be bus period, let F be bus frequency
 // let f be I2C frequency
 // at F=80 MHz, I2C period = (TPR+1)*250ns 
@@ -410,11 +426,11 @@ int I2C3_SendData(uint8_t slaveAddr, uint8_t *pData, uint32_t count){
 int I2C3_BlockRead(uint8_t slaveAddr, uint8_t reg, uint8_t *pData, uint32_t count)
 {
     // -------- WRITE REGISTER ADDRESS --------
-    while(I2C3_MCS_R & I2C_MCS_BUSY){};      // wait ready
+    if(I2C3_WaitBusy() != 0) return -1;     // wait ready
     I2C3_MSA_R = (slaveAddr << 1);           // SLA+W
     I2C3_MDR_R = reg;                        // register address
     I2C3_MCS_R = I2C_MCS_START | I2C_MCS_RUN;   // send START + reg
-    while(I2C3_MCS_R & I2C_MCS_BUSY){};
+    if(I2C3_WaitBusy() != 0) return -1;
 
     if(I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)){
         I2C3_MCS_R = I2C_MCS_STOP;           // STOP on error
@@ -426,26 +442,26 @@ int I2C3_BlockRead(uint8_t slaveAddr, uint8_t reg, uint8_t *pData, uint32_t coun
 
     if(count == 1){
         I2C3_MCS_R = I2C_MCS_START | I2C_MCS_STOP | I2C_MCS_RUN;  // single byte → NACK + STOP
-        while(I2C3_MCS_R & I2C_MCS_BUSY){};
+        if(I2C3_WaitBusy() != 0) return -1;
         pData[0] = I2C3_MDR_R;
         return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
     }
 
     // first byte with ACK
     I2C3_MCS_R = I2C_MCS_START | I2C_MCS_ACK | I2C_MCS_RUN;  
-    while(I2C3_MCS_R & I2C_MCS_BUSY){};
+    if(I2C3_WaitBusy() != 0) return -1;
     pData[0] = I2C3_MDR_R;
 
     // middle bytes
     for(uint32_t i=1; i < count-1; i++){
         I2C3_MCS_R = I2C_MCS_ACK | I2C_MCS_RUN;   // ACK
-        while(I2C3_MCS_R & I2C_MCS_BUSY){};
+        if(I2C3_WaitBusy() != 0) return -1;
         pData[i] = I2C3_MDR_R;
     }
 
     // last byte → NACK + STOP
     I2C3_MCS_R = I2C_MCS_STOP | I2C_MCS_RUN;  
-    while(I2C3_MCS_R & I2C_MCS_BUSY){};
+    if(I2C3_WaitBusy() != 0) return -1;
     pData[count-1] = I2C3_MDR_R;
 
     return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
@@ -457,12 +473,12 @@ int I2C3_BlockRead(uint8_t slaveAddr, uint8_t reg, uint8_t *pData, uint32_t coun
 int I2C3_BlockWrite(uint8_t slaveAddr, uint8_t reg, const uint8_t *data, uint32_t len)
 {
     // --- SEND REGISTER ADDRESS FIRST ---
-    while(I2C3_MCS_R & I2C_MCS_BUSY){};        // wait ready
+    if(I2C3_WaitBusy() != 0) return -1;      // wait ready
     I2C3_MSA_R = (slaveAddr << 1);             // SLA+W
 
     I2C3_MDR_R = reg;                          // Register address
     I2C3_MCS_R = I2C_MCS_START | I2C_MCS_RUN;  // START + write reg
-    while(I2C3_MCS_R & I2C_MCS_BUSY){};
+    if(I2C3_WaitBusy() != 0) return -1;
 
     if(I2C3_MCS_R & (I2C_MCS_ERROR | I2C_MCS_ADRACK | I2C_MCS_DATACK)){
         I2C3_MCS_R = I2C_MCS_STOP;
@@ -480,7 +496,7 @@ int I2C3_BlockWrite(uint8_t slaveAddr, uint8_t reg, const uint8_t *data, uint32_
             I2C3_MCS_R = I2C_MCS_RUN;
         }
 
-        while(I2C3_MCS_R & I2C_MCS_BUSY){};
+        if(I2C3_WaitBusy() != 0) return -1;
 
         if(I2C3_MCS_R & (I2C_MCS_ERROR | I2C_MCS_ADRACK | I2C_MCS_DATACK)){
             I2C3_MCS_R = I2C_MCS_STOP;

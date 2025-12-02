@@ -459,6 +459,16 @@
               <FileType>1</FileType>
               <FilePath>..\inc\MCP4821.c</FilePath>
             </File>
+            <File>
+              <FileName>diskio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\diskio.c</FilePath>
+            </File>
+            <File>
+              <FileName>ff.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\ff.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

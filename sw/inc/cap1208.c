@@ -92,8 +92,9 @@ void CAP1208_Init(void)
     GPIO_Init(&PF4Config);
     GPIO_AttachISR(&PF4Config, Input_Handler);
     CAP1208_ClearINT(); // Clear any existing interrupts, active power mode
+    I2C3_BlockWrite(CAP1208_ADDRESS, R_CONFIGURATION, (uint8_t[]){0x20}, 1);
     I2C3_BlockWrite(CAP1208_ADDRESS, R_CONFIGURATION2, (uint8_t[]){0b01000000}, 1); //only interrupt on press
-    //I2C3_BlockWrite(CAP1208_ADDRESS, R_REPEAT_EN, (uint8_t[]){0x00}, 1); // Disable repeat for all inputs
+    I2C3_BlockWrite(CAP1208_ADDRESS, R_REPEAT_EN, (uint8_t[]){0xFF}, 1); // Disable repeat for all inputs
     CAP1208_SetSensitivity(3); // Set highest sensitivity, 128x
     CAP1208_EnableInputs(0xFF); // Enable all 8 inputs
     CAP1208_Calibrate(); // Calibrate all inputs

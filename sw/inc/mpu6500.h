@@ -29,6 +29,8 @@
 #define GYRO_YOUT_L       0x46
 #define GYRO_ZOUT_H       0x47
 #define GYRO_ZOUT_L       0x48
+#define SIGNAL_PATH_RESET 0x68
+#define USER_CTRL 0x6A
 
 typedef struct {
     volatile int16_t accel_x;
@@ -55,8 +57,6 @@ typedef struct {
 
 
 void MPU6500_Init(void);
-void MPU6500_WriteReg(uint8_t reg, uint8_t data);
-uint8_t MPU6500_ReadReg(uint8_t reg);
 void MPU6500_read_accel(raw_imu *imu_raw_data);
 void MPU6500_read_gyro(raw_imu *imu_raw_data);
 void MPU6500_getData(raw_imu *rData, processed_imu *pData);

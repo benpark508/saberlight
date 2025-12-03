@@ -7,6 +7,9 @@
 #include "../inc/MCP4821.h"
 #include "../inc/SPI.h"
 
+long StartCritical(void);
+void EndCritical(long sr);
+
 //=========================================
 // Initialize SSI0 + PA1 for MCP4821 DAC
 //=========================================
@@ -26,6 +29,8 @@ void DAC_Init(uint16_t initial)
 //=========================================
 void DAC_Out(uint16_t code)
 {
+  long sr = StartCritical();
+
   while ((SSI0_SR_R & SSI_SR_BSY) == SSI_SR_BSY)
   {
   };
@@ -54,6 +59,7 @@ void DAC_Out(uint16_t code)
   dummy = SSI0_DR_R;
   dummy = SSI0_DR_R;
   deselect_DAC();
+  EndCritical(sr);
 }
 
 //=========================================

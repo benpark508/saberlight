@@ -1854,6 +1854,7 @@ void static writecommand(uint8_t c)
   {
   };
   volatile uint32_t dummy = SSI0_DR_R;
+  deselect_TFT();
   EndCritical(sr);
 }
 
@@ -1872,6 +1873,7 @@ void static writedata(uint8_t c)
   {
   };
   volatile uint32_t dummy = SSI0_DR_R;
+  deselect_TFT();
   EndCritical(sr);
 }
 

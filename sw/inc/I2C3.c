@@ -50,7 +50,7 @@
 #define I2C_MCR_MFE             0x00000010  // I2C Master Function Enable
 #define MAXRETRIES              5           // number of receive attempts before giving up
 
-#define I2C_TIMEOUT 10000 
+#define I2C_TIMEOUT 80000 
 
 int I2C3_WaitBusy(void){
     uint32_t timeout = I2C_TIMEOUT;

@@ -76,6 +76,7 @@
 #define R_STANDBY_SENS      0x42
 #define R_STANDBY_THRESH    0x43
 
+#define R_CONFIGURATION     0x20
 #define R_CONFIGURATION2    0x44
 // B7 = Linked LED Transition
 // B6 = Alert Polarity

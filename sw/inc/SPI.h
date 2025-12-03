@@ -50,19 +50,31 @@
 #define DAC_CS_LOW 0
 #define DAC_CS_HIGH 0x02
 
-#define FCLK_SLOW()                                              \
-    {                                                            \
-        SSI0_CPSR_R = (SSI0_CPSR_R & ~SSI_CPSR_CPSDVSR_M) + 200; \
-    }
-#define FCLK_FAST()                                            \
+#define WAIT_SSI0_IDLE()  while((SSI0_SR_R & 0x10)==0x10){};
+
+#define FCLK_SLOW()                                            \
     {                                                          \
-        SSI0_CPSR_R = (SSI0_CPSR_R & ~SSI_CPSR_CPSDVSR_M) + 8; \
-    }
-#define FCLK_LCD()                                              \
-    {                                                           \
-        SSI0_CPSR_R = (SSI0_CPSR_R & ~SSI_CPSR_CPSDVSR_M) + 10; \
+        WAIT_SSI0_IDLE();                                      \
+        SSI0_CR1_R &= ~SSI_CR1_SSE;  /* Disable SSI */         \
+        SSI0_CPSR_R = (SSI0_CPSR_R & ~SSI_CPSR_CPSDVSR_M) + 200; /* 400 kHz */ \
+        SSI0_CR1_R |= SSI_CR1_SSE;   /* Enable SSI */          \
     }
 
+#define FCLK_FAST()                                            \
+    {                                                          \
+        WAIT_SSI0_IDLE();                                      \
+        SSI0_CR1_R &= ~SSI_CR1_SSE;  /* Disable SSI */         \
+        SSI0_CPSR_R = (SSI0_CPSR_R & ~SSI_CPSR_CPSDVSR_M) + 8;    /* 10 MHz */ \
+        SSI0_CR1_R |= SSI_CR1_SSE;   /* Enable SSI */          \
+    }
+
+#define FCLK_LCD()                                             \
+    {                                                          \
+        WAIT_SSI0_IDLE();                                      \
+        SSI0_CR1_R &= ~SSI_CR1_SSE;  /* Disable SSI */         \
+        SSI0_CPSR_R = (SSI0_CPSR_R & ~SSI_CPSR_CPSDVSR_M) + 10;   /* 8 MHz */  \
+        SSI0_CR1_R |= SSI_CR1_SSE;   /* Enable SSI */          \
+    }
 
 /**
  * \brief Boolean type

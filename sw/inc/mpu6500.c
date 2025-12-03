@@ -20,63 +20,68 @@
 long StartCritical(void);
 void EndCritical(long sr);
 
-void WaitForSSI0Idle(void)
+static void WaitForSSI0Idle(void)
 {
-    while ((SSI0_SR_R & 0x01) == 0)
-    {
-    }; // Wait for TX FIFO empty
     while ((SSI0_SR_R & 0x10) == 0x10)
     {
-    }; // Wait for Busy bit low
+    };
 }
 
 void MPU6500_Init(void)
 {
     long sr = StartCritical();
 
-    while ((SSI0_SR_R & 0x10) == 0x10)
-    {
-    };
+    WaitForSSI0Idle();
 
     FCLK_SLOW();
 
     select_IMU();
-
-    uint8_t who_am_i = MPU6500_ReadReg(WHO_AM_I);
-    if (who_am_i != 0x70)
-    {
-        // Communication error or wrong chip! Loop indefinitely or flag an error.
-        while (1)
-        {
-            // Blink an LED here for visual debug
-        }
-    }
-
     xchg_spi(PWR_MGMT_1 | MPU_WRITE);
     xchg_spi(0x80); // Reset
     deselect_IMU();
 
-    while ((SSI0_SR_R & 0x10) == 0x10)
-    {
-    };
+    WaitForSSI0Idle();
 
     FCLK_LCD();
 
     EndCritical(sr);
 
-    SysTick80_Wait10ms(50); // wait 500 ms
+    SysTick80_Wait10ms(10); // wait 100 ms
 
     sr = StartCritical();
 
-    while ((SSI0_SR_R & 0x10) == 0x10)
-    {
-    };
+    WaitForSSI0Idle();
+
+    FCLK_SLOW();
+
+    select_IMU();
+    xchg_spi(SIGNAL_PATH_RESET | MPU_WRITE);
+    xchg_spi(0x07); // Reset
+    deselect_IMU();
+
+    WaitForSSI0Idle();
+
+    FCLK_LCD();
+
+    EndCritical(sr);
+
+    SysTick80_Wait10ms(10); // wait 100 ms
+
+
+    sr = StartCritical();
+
+    WaitForSSI0Idle();
 
     FCLK_SLOW();
 
     select_IMU();
     xchg_spi(PWR_MGMT_1 | MPU_WRITE);
     xchg_spi(0x00); // Wake Up
+    deselect_IMU();
+
+    select_IMU();
+    xchg_spi(USER_CTRL | MPU_WRITE);
+    xchg_spi(0x10); // Wake Up
     deselect_IMU();
 
     select_IMU();
@@ -94,69 +99,17 @@ void MPU6500_Init(void)
     xchg_spi(0x08); // 500dps
     deselect_IMU();
 
-    while ((SSI0_SR_R & 0x10) == 0x10)
-    {
-    };
+    WaitForSSI0Idle();
 
     FCLK_LCD();
 
     EndCritical(sr);
-}
-
-void MPU6500_WriteReg(uint8_t reg, uint8_t data)
-{
-    long sr = StartCritical();
-
-    while ((SSI0_SR_R & 0x10) == 0x10)
-    {
-    };
-
-    FCLK_SLOW();
-    select_IMU();              // CS Low
-    xchg_spi(reg | MPU_WRITE); // Send Register Address
-    xchg_spi(data);            // Send Data
-    deselect_IMU();            // CS High
-
-    while ((SSI0_SR_R & 0x10) == 0x10)
-    {
-    };
-
-    FCLK_LCD();
-    EndCritical(sr);
-}
-
-// Read a register
-uint8_t MPU6500_ReadReg(uint8_t reg)
-{
-    long sr = StartCritical();
-
-    while ((SSI0_SR_R & 0x10) == 0x10)
-    {
-    };
-
-    FCLK_SLOW();
-    uint8_t result;
-    select_IMU();             // CS Low
-    xchg_spi(reg | MPU_READ); // Send Register Address (Read Bit Set)
-    result = xchg_spi(0xFF);  // Send Dummy to clock in data
-    deselect_IMU();           // CS High
-
-    while ((SSI0_SR_R & 0x10) == 0x10)
-    {
-    };
-
-    FCLK_LCD();
-    EndCritical(sr);
-    return result;
 }
 
 void MPU6500_ReadBlock(uint8_t reg, uint8_t *data, uint8_t length)
 {
     long sr = StartCritical();
-
-    while ((SSI0_SR_R & 0x10) == 0x10)
-    {
-    };
+    WaitForSSI0Idle();
 
     select_IMU();             // CS Low
     xchg_spi(reg | MPU_READ); // Send Start Register Address
@@ -167,6 +120,7 @@ void MPU6500_ReadBlock(uint8_t reg, uint8_t *data, uint8_t length)
     }
 
     deselect_IMU(); // CS High
+
     EndCritical(sr);
 }
 

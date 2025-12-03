@@ -27,6 +27,24 @@ static void WaitForSSI0Idle(void)
     };
 }
 
+uint8_t MPU6500_ReadReg(uint8_t reg)
+{
+    long sr = StartCritical();
+    WaitForSSI0Idle();
+
+    // Note: No FCLK switching needed here if Main Loop is already Fast
+    
+    uint8_t result;
+    select_IMU();
+    xchg_spi(reg | MPU_READ);
+    result = xchg_spi(0xFF);
+    deselect_IMU();
+
+    WaitForSSI0Idle();
+    EndCritical(sr);
+    return result;
+}
+
 void MPU6500_Init(void)
 {
     long sr = StartCritical();
@@ -120,7 +138,7 @@ void MPU6500_ReadBlock(uint8_t reg, uint8_t *data, uint8_t length)
     }
 
     deselect_IMU(); // CS High
-
+    WaitForSSI0Idle();
     EndCritical(sr);
 }
 

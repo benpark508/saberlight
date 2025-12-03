@@ -401,6 +401,9 @@ if(s != 0){
   ST7735_SetCursor(0, 8); // Line 6
   ST7735_OutString("az: ");
 
+  ST7735_SetCursor(0, 10);
+  ST7735_OutString("WHO: ");
+
   Music_Play();
 
   while (1)
@@ -426,8 +429,14 @@ if(s != 0){
       ST7735_SetCursor(7, 8);
       ST7735_OutSDec16(imu_raw.accel_z);
       ST7735_OutString("  ");
+
+      uint8_t who = MPU6500_ReadReg(0x75); // WHO_AM_I
+      ST7735_SetCursor(7, 10);
+      ST7735_OutUDec(who);
+      ST7735_OutString("  ");
     }
-    if(go){
+    if (go)
+    {
       CAP1208_ClearINT();
     }
   }

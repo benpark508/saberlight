@@ -57,6 +57,7 @@ typedef struct {
 
 
 void MPU6500_Init(void);
+uint8_t MPU6500_ReadReg(uint8_t reg);
 void MPU6500_read_accel(raw_imu *imu_raw_data);
 void MPU6500_read_gyro(raw_imu *imu_raw_data);
 void MPU6500_getData(raw_imu *rData, processed_imu *pData);

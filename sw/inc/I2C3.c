@@ -472,24 +472,35 @@ int I2C3_BlockRead(uint8_t slaveAddr, uint8_t reg, uint8_t *pData, uint32_t coun
 // Returns 0 on success, nonzero on error.
 int I2C3_BlockWrite(uint8_t slaveAddr, uint8_t reg, const uint8_t *data, uint32_t len)
 {
-    // --- SEND REGISTER ADDRESS FIRST ---
-    if(I2C3_WaitBusy() != 0) return -1;      // wait ready
-    I2C3_MSA_R = (slaveAddr << 1);             // SLA+W
+    // --- 1. SETUP TRANSACTION ---
+    if(I2C3_WaitBusy() != 0) return -1;      
+    I2C3_MSA_R = (slaveAddr << 1);           // SLA+W
+    I2C3_MDR_R = reg;                        // Load Register address
 
-    I2C3_MDR_R = reg;                          // Register address
-    I2C3_MCS_R = I2C_MCS_START | I2C_MCS_RUN;  // START + write reg
+    // --- 2. HANDLE ZERO LENGTH (Set Pointer Only) ---
+    // If no data is coming, we must STOP immediately after the register address
+    if (len == 0) {
+        I2C3_MCS_R = I2C_MCS_START | I2C_MCS_RUN | I2C_MCS_STOP;
+        if(I2C3_WaitBusy() != 0) return -1;
+        return (I2C3_MCS_R & (I2C_MCS_ERROR | I2C_MCS_ADRACK | I2C_MCS_DATACK));
+    }
+
+    // --- 3. START TRANSACTION (Address + Register) ---
+    // If we HAVE data, do NOT send Stop yet.
+    I2C3_MCS_R = I2C_MCS_START | I2C_MCS_RUN; 
     if(I2C3_WaitBusy() != 0) return -1;
 
+    // Check for errors (NACK on address or register write)
     if(I2C3_MCS_R & (I2C_MCS_ERROR | I2C_MCS_ADRACK | I2C_MCS_DATACK)){
-        I2C3_MCS_R = I2C_MCS_STOP;
+        I2C3_MCS_R = I2C_MCS_STOP; // Emergency Stop
         return -1;
     }
 
-    // --- WRITE DATA BYTES ---
+    // --- 4. WRITE DATA BYTES ---
     for(uint32_t i = 0; i < len; i++){
         I2C3_MDR_R = data[i];
 
-        // If last byte → STOP
+        // If last byte -> Send STOP
         if(i == len - 1){
             I2C3_MCS_R = I2C_MCS_RUN | I2C_MCS_STOP;
         } else {
@@ -498,8 +509,9 @@ int I2C3_BlockWrite(uint8_t slaveAddr, uint8_t reg, const uint8_t *data, uint32_
 
         if(I2C3_WaitBusy() != 0) return -1;
 
+        // Check for errors (NACK on data byte)
         if(I2C3_MCS_R & (I2C_MCS_ERROR | I2C_MCS_ADRACK | I2C_MCS_DATACK)){
-            I2C3_MCS_R = I2C_MCS_STOP;
+            I2C3_MCS_R = I2C_MCS_STOP; 
             return -2;
         }
     }

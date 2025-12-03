@@ -41,17 +41,22 @@ typedef struct {
     volatile int16_t gyro_z;
 } raw_imu;
 
-// Struct for processed IMU data
 typedef struct {
-	int16_t gyro_offX;
-	int16_t gyro_offY;
-	int16_t gyro_offZ;
-    volatile int16_t accel_x;
-    volatile int16_t accel_y;
-    volatile int16_t accel_z;
-    volatile int16_t gyro_x;
-    volatile int16_t gyro_y;
-    volatile int16_t gyro_z;
+    // Offsets
+    int32_t gyro_off_x;
+    int32_t gyro_off_y;
+    int32_t gyro_off_z;
+    int32_t accel_off_x;
+    int32_t accel_off_y;
+    int32_t accel_off_z;
+
+    // Real values in milli-units (e.g. 1000 = 1.0)
+    int32_t accel_x_mg;    // milli-g
+    int32_t accel_y_mg;
+    int32_t accel_z_mg;
+    int32_t gyro_x_mdps;   // milli-degrees per second
+    int32_t gyro_y_mdps;
+    int32_t gyro_z_mdps;
 } processed_imu;
 
 
@@ -61,6 +66,6 @@ uint8_t MPU6500_ReadReg(uint8_t reg);
 void MPU6500_read_accel(raw_imu *imu_raw_data);
 void MPU6500_read_gyro(raw_imu *imu_raw_data);
 void MPU6500_getData(raw_imu *rData, processed_imu *pData);
-void MPU6500_calibrate(uint16_t numCalPoints, processed_imu *imu_processed_data);
+void MPU6500_calibrate(processed_imu *imu_processed_data);
 
 #endif // __MPU6500_H__

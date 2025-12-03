@@ -167,8 +167,7 @@ BYTE xchg_spi(BYTE dat)
     // wait until SSI0 not busy/transmit FIFO empty
     while ((SSI0_SR_R & SSI_SR_TNF) == 0)
     {
-    } // wait until transmit FIFO is not full
-    {};
+    }; // wait until transmit FIFO is not full
     SSI0_DR_R = dat; // data out
     while ((SSI0_SR_R & SSI_SR_RNE) == 0)
     {

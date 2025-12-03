@@ -255,7 +255,10 @@ int main(void)
   SPI_Init(200); // initialize SSI0 at 400 kHz
   CAP1208_Init();
   MPU6500_Init();
-  ST7735_InitR(INITR_GREENTAB); // initialize LCD
+  long sr = StartCritical();
+  MPU6500_calibrate(&imu_proc);
+  EndCritical(sr);
+  ST7735_InitR(INITR_GREENTAB);           // initialize LCD
   Timer1A_Init(debug_serial, 8000000, 2); // print every 100 ms
   Music_Init();
 
@@ -414,31 +417,29 @@ if(s != 0){
 
       CAP1208_ReadCount(1, &count);
 
-      MPU6500_read_accel(&imu_raw);
+      MPU6500_getData(&imu_raw, &imu_proc);
 
       ST7735_SetCursor(7, 2);
       ST7735_OutSDec8(count);
       ST7735_OutString("   ");
 
       ST7735_SetCursor(7, 4);
-      ST7735_OutSDec16(imu_raw.accel_x);
+      ST7735_OutSDec16(imu_proc.accel_x_mg);
       ST7735_OutString("  ");
       ST7735_SetCursor(7, 6);
-      ST7735_OutSDec16(imu_raw.accel_y);
+      ST7735_OutSDec16(imu_proc.accel_y_mg);
       ST7735_OutString("  ");
       ST7735_SetCursor(7, 8);
-      ST7735_OutSDec16(imu_raw.accel_z);
-      ST7735_OutString("  ");
-
-      uint8_t who = MPU6500_ReadReg(0x75); // WHO_AM_I
-      ST7735_SetCursor(7, 10);
-      ST7735_OutUDec(who);
+      ST7735_OutSDec16(imu_proc.accel_z_mg);
       ST7735_OutString("  ");
     }
     if (go)
     {
       go = 0;
-      CAP1208_ClearINT();
+      uint8_t status;
+      CAP1208_ReadInputs(&status); // <-- REQUIRED STEP 1
+
+      CAP1208_ClearINT(); // <-- REQUIRED STEP 2
     }
   }
 }

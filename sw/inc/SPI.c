@@ -50,12 +50,12 @@ void SPI_Init(unsigned long CPSDVSR)
 {
     volatile uint32_t delay;
 
-    SYSCTL_RCGCSSI_R |= 0x01; // activate SSI0
-
     SYSCTL_RCGCGPIO_R |= 0x01; // activate port A
     while ((SYSCTL_PRGPIO_R & 0x01) == 0)
     {
     }; // allow time for clock to start
+
+    SYSCTL_RCGCSSI_R |= 0x01; // activate SSI0
 
     SYSCTL_RCGCGPIO_R |= 0x08; // activate port D
     while ((SYSCTL_PRGPIO_R & 0x08) == 0)
@@ -127,6 +127,12 @@ void SPI_Init(unsigned long CPSDVSR)
     // DSS = 8-bit data
     SSI0_CR0_R = (SSI0_CR0_R & ~SSI_CR0_DSS_M) + SSI_CR0_DSS_8;
     SSI0_CR1_R |= SSI_CR1_SSE; // enable SSI
+
+    volatile uint32_t dump;
+    while (SSI0_SR_R & SSI_SR_RNE)
+    {
+        dump = SSI0_DR_R;
+    }
 }
 
 // de-asserts the CS pin to the card

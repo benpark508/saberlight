@@ -254,8 +254,8 @@ int main(void)
   SysTick_Init();
   SPI_Init(200); // initialize SSI0 at 400 kHz
   CAP1208_Init();
-  ST7735_InitR(INITR_GREENTAB);           // initialize LCD
   MPU6500_Init();
+  ST7735_InitR(INITR_GREENTAB); // initialize LCD
   Timer1A_Init(debug_serial, 8000000, 2); // print every 100 ms
   Music_Init();
 

@@ -41,9 +41,9 @@ processed_imu imu_proc;
 volatile uint8_t cap_read = 0;
 volatile uint8_t imu_read = 0;
 uint8_t touch = 0;
-int8_t count = 0;
+int8_t counts[2];
 extern volatile uint8_t go;
-static int8_t last_count = 0;
+static uint8_t last_any_touch = 0;
 
 void READ_CAP(void)
 {
@@ -71,17 +71,29 @@ int main(void)
   Timer1A_Init(READ_CAP, 800000, 4); // call every 10 ms
   Timer2A_Init(READ_IMU, 80000, 1);  // call every 1 ms
   Music_Init();
+  Sound_ImperialMarch();
   Lightstrip_Init();
-  ESP8266_Init();		// ESP stuff
-	UART4_Init();
-	ESP8266_Reset();
-
+  ESP8266_Init(); // ESP stuff
+  UART4_Init();
+  ESP8266_Reset();
   EnableInterrupts();
 
   Blade_R = 255;
   Blade_G = 0;
   Blade_B = 0;
   char c;
+
+  ST7735_FillScreen(ST7735_BLACK);
+  ST7735_SetCursor(0, 0);
+  ST7735_OutString("cap1208 demo");
+
+  ST7735_SetCursor(0, 2); // Line 2
+  ST7735_OutString("c1: ");
+  ST7735_OutString("      ");
+
+  ST7735_SetCursor(0, 4); // Line 2
+  ST7735_OutString("c7: ");
+  ST7735_OutString("      ");
 
   while (1)
   {
@@ -100,12 +112,29 @@ int main(void)
     {
       cap_read = 0;
 
-      CAP1208_ReadCount(1, &count);
-      if (count == 127 && last_count != 127 && !Music_IsPlaying())
+      CAP1208_ReadCounts(counts);
+
+      ST7735_SetCursor(7, 2);
+      ST7735_OutSDec8(counts[0]);
+      ST7735_OutString("        ");
+      ST7735_SetCursor(7, 4);
+      ST7735_OutSDec8(counts[1]);
+      ST7735_OutString("        ");
+
+      uint8_t current_any_touch = 0;
+      if (counts[0] == 127 || counts[1] == 127)
+      {
+          current_any_touch = 1;
+      }
+
+      // Edge Detection: Only trigger if we weren't touching before (Rising Edge)
+      if (current_any_touch && !last_any_touch && !Music_IsPlaying())
       {
         Sound_Block();
       }
-      last_count = count;
+      
+      // Update history
+      last_any_touch = current_any_touch;
     }
   }
 }

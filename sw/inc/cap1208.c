@@ -67,7 +67,7 @@ void CAP1208_SetThreshold(uint8_t channel, uint8_t threshold)
 
 void CAP1208_Calibrate(void)
 {
-    I2C3_BlockWrite(CAP1208_ADDRESS, R_CALIBRATION, (uint8_t[]){0b11111111}, 1); // write 1 to start calibration
+    I2C3_BlockWrite(CAP1208_ADDRESS, R_CALIBRATION, (uint8_t[]){0x41}, 1); // write 1 to start calibration
 }
 
 void CAP1208_EnableInterrupts(uint8_t enable)
@@ -81,6 +81,20 @@ void CAP1208_ReadCount(uint8_t channel, int8_t *count)
     uint8_t temp;
     I2C3_BlockRead(CAP1208_ADDRESS, R_INPUT_1_DELTA + (channel - 1), &temp, 1);
     *count = (int8_t)temp; 
+}
+
+void CAP1208_ReadCounts(int8_t *counts)
+{
+    uint8_t temp[2];
+    
+    // Read 4 consecutive registers starting at Input 1 Delta
+    // Registers for 1-4 are sequential
+    I2C3_BlockRead(CAP1208_ADDRESS, R_INPUT_1_DELTA, &temp[0], 1);
+    I2C3_BlockRead(CAP1208_ADDRESS, R_INPUT_7_DELTA, &temp[1], 1);
+    
+    counts[0] = (int8_t)temp[0];
+    counts[1] = (int8_t)temp[1];
+
 }
 
 void Input_Handler(void) {
@@ -122,7 +136,7 @@ void CAP1208_Init(void)
     SysTick_Wait10ms(1);
 
     // Enable Inputs
-    CAP1208_EnableInputs(0xFF); 
+    CAP1208_EnableInputs(0x41); 
     SysTick_Wait10ms(1);
 
     // Trigger Calibration

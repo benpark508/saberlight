@@ -445,11 +445,6 @@
               <FilePath>..\inc\SPI.c</FilePath>
             </File>
             <File>
-              <FileName>Timer1A.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\inc\Timer1A.c</FilePath>
-            </File>
-            <File>
               <FileName>music.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\music.c</FilePath>
@@ -493,6 +488,21 @@
               <FileName>UART4.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\UART4.c</FilePath>
+            </File>
+            <File>
+              <FileName>game.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\game.c</FilePath>
+            </File>
+            <File>
+              <FileName>states.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\states.c</FilePath>
+            </File>
+            <File>
+              <FileName>Timer1A.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\Timer1A.c</FilePath>
             </File>
           </Files>
         </Group>

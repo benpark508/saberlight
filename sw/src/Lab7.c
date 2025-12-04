@@ -396,16 +396,16 @@ if(s != 0){
   ST7735_OutString("Delta: ");
 
   ST7735_SetCursor(0, 4); // Line 2
+  ST7735_OutString("Touch: ");
+
+  ST7735_SetCursor(0, 6); // Line 2
   ST7735_OutString("ax: ");
 
-  ST7735_SetCursor(0, 6); // Line 4
+  ST7735_SetCursor(0, 8); // Line 4
   ST7735_OutString("ay: ");
 
-  ST7735_SetCursor(0, 8); // Line 6
+  ST7735_SetCursor(0, 10); // Line 6
   ST7735_OutString("az: ");
-
-  ST7735_SetCursor(0, 10);
-  ST7735_OutString("WHO: ");
 
   Music_Play();
 
@@ -415,6 +415,10 @@ if(s != 0){
     {
       printflag = 0;
 
+      ST7735_SetCursor(7, 4);
+      ST7735_OutString("NO");
+      ST7735_OutString("   ");
+
       CAP1208_ReadCount(1, &count);
 
       MPU6500_getData(&imu_raw, &imu_proc);
@@ -423,23 +427,15 @@ if(s != 0){
       ST7735_OutSDec8(count);
       ST7735_OutString("   ");
 
-      ST7735_SetCursor(7, 4);
+      ST7735_SetCursor(7, 6);
       ST7735_OutSDec16(imu_proc.accel_x_mg);
       ST7735_OutString("  ");
-      ST7735_SetCursor(7, 6);
+      ST7735_SetCursor(7, 8);
       ST7735_OutSDec16(imu_proc.accel_y_mg);
       ST7735_OutString("  ");
-      ST7735_SetCursor(7, 8);
+      ST7735_SetCursor(7, 10);
       ST7735_OutSDec16(imu_proc.accel_z_mg);
       ST7735_OutString("  ");
-    }
-    if (go)
-    {
-      go = 0;
-      uint8_t status;
-      CAP1208_ReadInputs(&status); // <-- REQUIRED STEP 1
-
-      CAP1208_ClearINT(); // <-- REQUIRED STEP 2
     }
   }
 }

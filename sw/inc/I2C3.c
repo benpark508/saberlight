@@ -39,213 +39,306 @@
 #include "../inc/I2C3.h"
 #include "../inc/tm4c123gh6pm.h"
 
-#define I2C_MCS_ACK             0x00000008  // Data Acknowledge Enable
-#define I2C_MCS_DATACK          0x00000008  // Acknowledge Data
-#define I2C_MCS_ADRACK          0x00000004  // Acknowledge Address
-#define I2C_MCS_STOP            0x00000004  // Generate STOP
-#define I2C_MCS_START           0x00000002  // Generate START
-#define I2C_MCS_ERROR           0x00000002  // Error
-#define I2C_MCS_RUN             0x00000001  // I2C Master Enable
-#define I2C_MCS_BUSY            0x00000001  // I2C Busy
-#define I2C_MCR_MFE             0x00000010  // I2C Master Function Enable
-#define MAXRETRIES              5           // number of receive attempts before giving up
+#define I2C_MCS_ACK 0x00000008    // Data Acknowledge Enable
+#define I2C_MCS_DATACK 0x00000008 // Acknowledge Data
+#define I2C_MCS_ADRACK 0x00000004 // Acknowledge Address
+#define I2C_MCS_STOP 0x00000004   // Generate STOP
+#define I2C_MCS_START 0x00000002  // Generate START
+#define I2C_MCS_ERROR 0x00000002  // Error
+#define I2C_MCS_RUN 0x00000001    // I2C Master Enable
+#define I2C_MCS_BUSY 0x00000001   // I2C Busy
+#define I2C_MCR_MFE 0x00000010    // I2C Master Function Enable
+#define MAXRETRIES 5              // number of receive attempts before giving up
 
-#define I2C_TIMEOUT 80000 
+#define I2C_TIMEOUT 10000
 
-int I2C3_WaitBusy(void){
-    uint32_t timeout = I2C_TIMEOUT;
-    while( (I2C3_MCS_R & I2C_MCS_BUSY) && (timeout > 0)){
-        timeout--;
+// Force the I2C bus to clear if a slave is holding SDA low
+void I2C3_ResetBus(void){
+    // 1. Disable I2C3 Master Function to take control of pins
+    I2C3_MCR_R = 0; 
+    
+    // 2. Configure PD0 (SCL) as GPIO Output
+    GPIO_PORTD_AFSEL_R &= ~0x01; // Turn off Alt Funct
+    GPIO_PORTD_PCTL_R &= ~0x0000000F; // Clear PCTL for PD0
+    GPIO_PORTD_DIR_R |= 0x01;    // Output
+    GPIO_PORTD_DEN_R |= 0x01;    // Digital Enable
+    
+    // 3. Toggle SCL 9 times to force Slave to release SDA
+    for(int i=0; i<9; i++){
+        GPIO_PORTD_DATA_R |= 0x01;  // High
+        for(volatile int w=0; w<100; w++); // Delay
+        GPIO_PORTD_DATA_R &= ~0x01; // Low
+        for(volatile int w=0; w<100; w++); // Delay
     }
-    if(timeout == 0){
-        // Bus is stuck!
-        // Optional: Force a Stop condition to try and reset
-        I2C3_MCS_R = I2C_MCS_STOP; 
-        return -1; // Error
-    }
-    return 0; // Success
+    
+    // 4. Send a STOP condition manually (SDA Low -> High while SCL High)
+    // We need PD1 (SDA) for this part
+    GPIO_PORTD_AFSEL_R &= ~0x02; // PD1 GPIO
+    GPIO_PORTD_PCTL_R &= ~0x000000F0;
+    GPIO_PORTD_DIR_R |= 0x02;    // PD1 Output
+    GPIO_PORTD_DEN_R |= 0x02;    // PD1 Enable
+    
+    // STOP: SDA Low, SCL High, then SDA High
+    GPIO_PORTD_DATA_R &= ~0x02; // SDA Low
+    for(volatile int w=0; w<100; w++);
+    GPIO_PORTD_DATA_R |= 0x01;  // SCL High
+    for(volatile int w=0; w<100; w++);
+    GPIO_PORTD_DATA_R |= 0x02;  // SDA High
+    for(volatile int w=0; w<100; w++);
+
+    // 5. Restore Pins to I2C Mode
+    GPIO_PORTD_AFSEL_R |= 0x03; 
+    GPIO_PORTD_PCTL_R = (GPIO_PORTD_PCTL_R & 0xFFFFFF00) + 0x00000033;
+    I2C3_MCR_R = I2C_MCR_MFE; // Re-enable I2C Master
+}
+
+int I2C3_WaitBusy(void)
+{
+  volatile uint32_t delay = I2C3_MCS_R;
+  uint32_t timeout = I2C_TIMEOUT;
+  while ((I2C3_MCS_R & I2C_MCS_BUSY) && (timeout > 0))
+  {
+    timeout--;
+  }
+  if (timeout == 0)
+  {
+    // Bus is stuck!
+    // Optional: Force a Stop condition to try and reset
+    I2C3_MCS_R = I2C_MCS_STOP;
+    I2C3_ResetBus();
+    return -1; // Error
+  }
+
+  if (I2C3_MCS_R & I2C_MCS_ERROR) {
+      if ((I2C3_MCS_R & 0x10) == 0) { // If controller is NOT busy but Error is set
+          I2C3_ResetBus(); // It means the bus was low when we tried to Start
+      }
+  }
+  return 0; // Success
 }
 
 // let t be bus period, let F be bus frequency
 // let f be I2C frequency
-// at F=80 MHz, I2C period = (TPR+1)*250ns 
+// at F=80 MHz, I2C period = (TPR+1)*250ns
 // f=400kHz,    I2C period = 20*(TPR+1)*12.5ns = 2.5us, with TPR=9
-// I2C period, 1/f = 20*(TPR+1)*t 
+// I2C period, 1/f = 20*(TPR+1)*t
 // F/f = 20*(TPR+1)
-// TPR = (F/f/20)-1 
-void I2C3_Init(uint32_t I2Cfreq, uint32_t busFreq){
-  SYSCTL_RCGCI2C_R |= 0x0008;           // activate I2C3
-  SYSCTL_RCGCGPIO_R |= 0x0008;          // activate port D
-  while((SYSCTL_PRGPIO_R&0x0008) == 0){};// ready?
-  GPIO_PORTD_AFSEL_R |= 0x03;           // 3) enable alt funct on PD1,0
-  GPIO_PORTD_ODR_R |= 0x02;             // 4) enable open drain on PD1 only
-  GPIO_PORTD_DR8R_R |= 0x03;            //  high current on PD1,0
-  GPIO_PORTD_DEN_R |= 0x03;             // 5) enable digital I/O on PD1,0
-                                        // 6) configure PD1,0 as I2C
-  GPIO_PORTD_PCTL_R = (GPIO_PORTD_PCTL_R&0xFFFFFF00)+0x00000033;
-  GPIO_PORTD_AMSEL_R &= ~0x03;          // 7) disable analog functionality on PD1,0
-  I2C3_MCR_R = I2C_MCR_MFE;             // 9) master function enable, no glitch
-  I2C3_MCR2_R = I2C_MCR2_GFPW_BYPASS;   // bypass glitch
-//  I2C3_MCR_R = I2C_MCR_MFE|I2C_MCR_GFE;             // 9) master function enable, glitch
-//  I2C3_MCR2_R = I2C_MCR2_GFPW_4; // 4 clock glitch
-	I2C3_MTPR_R = ((busFreq/I2Cfreq)/20)-1; // 8) configure clock speed
+// TPR = (F/f/20)-1
+void I2C3_Init(uint32_t I2Cfreq, uint32_t busFreq)
+{
+  SYSCTL_RCGCI2C_R |= 0x0008;  // activate I2C3
+  SYSCTL_RCGCGPIO_R |= 0x0008; // activate port D
+  while ((SYSCTL_PRGPIO_R & 0x0008) == 0)
+  {
+  };                          // ready?
+  GPIO_PORTD_AFSEL_R |= 0x03; // 3) enable alt funct on PD1,0
+  GPIO_PORTD_ODR_R |= 0x02;   // 4) enable open drain on PD1 only
+  GPIO_PORTD_DR8R_R |= 0x03;  //  high current on PD1,0
+  GPIO_PORTD_DEN_R |= 0x03;   // 5) enable digital I/O on PD1,0
+                              // 6) configure PD1,0 as I2C
+  GPIO_PORTD_PCTL_R = (GPIO_PORTD_PCTL_R & 0xFFFFFF00) + 0x00000033;
+  GPIO_PORTD_AMSEL_R &= ~0x03;                  // 7) disable analog functionality on PD1,0
+  I2C3_MCR_R = I2C_MCR_MFE;                     // 9) master function enable, no glitch
+  I2C3_MCR2_R = I2C_MCR2_GFPW_BYPASS;           // bypass glitch
+                                                //  I2C3_MCR_R = I2C_MCR_MFE|I2C_MCR_GFE;             // 9) master function enable, glitch
+                                                //  I2C3_MCR2_R = I2C_MCR2_GFPW_4; // 4 clock glitch
+  I2C3_MTPR_R = ((busFreq / I2Cfreq) / 20) - 1; // 8) configure clock speed
 }
 
-int I2C3_Send(uint8_t slaveAddr, uint8_t *pData, uint32_t count){
-  while(I2C3_MCS_R & I2C_MCS_BUSY){};                // wait for I2C ready
-  I2C3_MSA_R = (slaveAddr << 1) & I2C_MSA_SA_M;      // MSA[7:1] is slave address
-  I2C3_MSA_R &= ~I2C_MSA_RS;                         // MSA[0] is 0 for send
-    
-  if(count == 1) {
-    I2C3_MDR_R = pData[0] & I2C_MDR_DATA_M;          // prepare data byte
-    I2C3_MCS_R = (I2C_MCS_STOP |                     // generate stop
-    
-                  I2C_MCS_START |                    // generate start/restart
-   
-                  I2C_MCS_RUN);                      // master enable
-    while (I2C3_MCS_R & I2C_MCS_BUSY){};             // wait for transmission done
+int I2C3_Send(uint8_t slaveAddr, uint8_t *pData, uint32_t count)
+{
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  };                                            // wait for I2C ready
+  I2C3_MSA_R = (slaveAddr << 1) & I2C_MSA_SA_M; // MSA[7:1] is slave address
+  I2C3_MSA_R &= ~I2C_MSA_RS;                    // MSA[0] is 0 for send
+
+  if (count == 1)
+  {
+    I2C3_MDR_R = pData[0] & I2C_MDR_DATA_M; // prepare data byte
+    I2C3_MCS_R = (I2C_MCS_STOP |            // generate stop
+
+                  I2C_MCS_START | // generate start/restart
+
+                  I2C_MCS_RUN); // master enable
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    }; // wait for transmission done
     // return error bits
-    return (I2C3_MCS_R&(I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
-        
-  }else {
-    I2C3_MDR_R = pData[0] & I2C_MDR_DATA_M;           // prepare data byte
-    I2C3_MCS_R = I2C_MCS_RUN|I2C_MCS_START;           // run and start
-    while (I2C3_MCS_R & I2C_MCS_BUSY){};              // wait for transmission done
-    if((I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)) != 0){
-      I2C3_MCS_R = I2C_MCS_STOP;                      // stop transmission
-       // return error bits if nonzero
-      return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+    return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
+  }
+  else
+  {
+    I2C3_MDR_R = pData[0] & I2C_MDR_DATA_M;   // prepare data byte
+    I2C3_MCS_R = I2C_MCS_RUN | I2C_MCS_START; // run and start
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    }; // wait for transmission done
+    if ((I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR)) != 0)
+    {
+      I2C3_MCS_R = I2C_MCS_STOP; // stop transmission
+                                 // return error bits if nonzero
+      return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
     }
-    for(int i = 1; i < count-1; i++) {
-      I2C3_MDR_R = pData[i] & I2C_MDR_DATA_M;         // prepare data byte
-      I2C3_MCS_R = I2C_MCS_RUN;                       // master enable
-      while (I2C3_MCS_R & I2C_MCS_BUSY){};            // wait for transmission done
+    for (int i = 1; i < count - 1; i++)
+    {
+      I2C3_MDR_R = pData[i] & I2C_MDR_DATA_M; // prepare data byte
+      I2C3_MCS_R = I2C_MCS_RUN;               // master enable
+      while (I2C3_MCS_R & I2C_MCS_BUSY)
+      {
+      }; // wait for transmission done
       // check error bits
-      if((I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)) != 0){
-        I2C3_MCS_R = I2C_MCS_STOP;                    // stop transmission
-       // return error bits if nonzero
-        return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+      if ((I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR)) != 0)
+      {
+        I2C3_MCS_R = I2C_MCS_STOP; // stop transmission
+                                   // return error bits if nonzero
+        return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
       }
-    }      
-    I2C3_MDR_R = pData[count-1] & I2C_MDR_DATA_M;     // prepare last byte
-    I2C3_MCS_R = (I2C_MCS_STOP |                      // generate stop
-                  I2C_MCS_RUN);                       // master enable
-    while (I2C3_MCS_R & I2C_MCS_BUSY) {};             // wait for transmission done
+    }
+    I2C3_MDR_R = pData[count - 1] & I2C_MDR_DATA_M; // prepare last byte
+    I2C3_MCS_R = (I2C_MCS_STOP |                    // generate stop
+                  I2C_MCS_RUN);                     // master enable
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    }; // wait for transmission done
     // return error bits
-    return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+    return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
   }
 }
 
-
-int I2C3_Send1(uint8_t slaveAddr, uint8_t data){
-  while(I2C3_MCS_R & I2C_MCS_BUSY){};  // wait for I2C ready
-  I2C3_MSA_R = (slaveAddr << 1);       // MSA[7:1] is slave address
-                                       // MSA[0] is 0 for send
-  I2C3_MDR_R = data;                   // prepare data byte
-  I2C3_MCS_R = (I2C_MCS_STOP |         // generate stop
-                I2C_MCS_START |        // generate start/restart
-                I2C_MCS_RUN);          // master enable
-  while (I2C3_MCS_R & I2C_MCS_BUSY){}; // wait for transmission done
-    // return error bits
-  return (I2C3_MCS_R&(I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));     
+int I2C3_Send1(uint8_t slaveAddr, uint8_t data)
+{
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  };                             // wait for I2C ready
+  I2C3_MSA_R = (slaveAddr << 1); // MSA[7:1] is slave address
+                                 // MSA[0] is 0 for send
+  I2C3_MDR_R = data;             // prepare data byte
+  I2C3_MCS_R = (I2C_MCS_STOP |   // generate stop
+                I2C_MCS_START |  // generate start/restart
+                I2C_MCS_RUN);    // master enable
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  }; // wait for transmission done
+  // return error bits
+  return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
 }
 
 // sends two bytes to specified slave
 // Returns 0 if successful, nonzero if error
-int I2C3_Send2(int8_t slave, uint8_t data1, uint8_t data2){
-  while(I2C3_MCS_R&0x01){}; // wait for I2C ready
-  I2C3_MSA_R = slave<<1;    // MSA[7:1] is slave address
-                            // MSA[0] is 0 for send
-  I2C3_MDR_R = data1;       // prepare first byte
-  I2C3_MCS_R = 0x03; // no stop, generate start, enable
-  while(I2C3_MCS_R&0x01){}; // wait for transmission done
-  if((I2C3_MCS_R&0x0E) != 0){ 
-    I2C3_MCS_R = 0x04;      // send stop if error
-    return I2C3_MCS_R&0x0E; // return error bits
+int I2C3_Send2(int8_t slave, uint8_t data1, uint8_t data2)
+{
+  while (I2C3_MCS_R & 0x01)
+  {
+  };                       // wait for I2C ready
+  I2C3_MSA_R = slave << 1; // MSA[7:1] is slave address
+                           // MSA[0] is 0 for send
+  I2C3_MDR_R = data1;      // prepare first byte
+  I2C3_MCS_R = 0x03;       // no stop, generate start, enable
+  while (I2C3_MCS_R & 0x01)
+  {
+  }; // wait for transmission done
+  if ((I2C3_MCS_R & 0x0E) != 0)
+  {
+    I2C3_MCS_R = 0x04;        // send stop if error
+    return I2C3_MCS_R & 0x0E; // return error bits
   }
-  I2C3_MDR_R = data2;       // prepare second byte
-  I2C3_MCS_R = 0x05;        // generate stop, no start, enable
-  while(I2C3_MCS_R&0x01){}; // wait for transmission done
-  return I2C3_MCS_R&0x0E;   // return error bits, if any
+  I2C3_MDR_R = data2; // prepare second byte
+  I2C3_MCS_R = 0x05;  // generate stop, no start, enable
+  while (I2C3_MCS_R & 0x01)
+  {
+  };                        // wait for transmission done
+  return I2C3_MCS_R & 0x0E; // return error bits, if any
 }
 
-//int I2C3_Send2b(int8_t slave, uint8_t data1, uint8_t data2){
-//  while(I2C3_MCS_R&I2C_MCS_BUSY){};// wait for I2C ready
-//  I2C3_MSA_R = (slave<<1)&0xFE;    // MSA[7:1] is slave address
-//  I2C3_MSA_R &= ~0x01;             // MSA[0] is 0 for send
-//  I2C3_MDR_R = data1&0xFF;         // prepare first byte
-//  I2C3_MCS_R = (0
-//                     //  & ~I2C_MCS_ACK     // no data ack (no data on send)
-//                    //   & ~I2C_MCS_STOP    // no stop
-//                       | I2C_MCS_START    // generate start/restart
-//                       | I2C_MCS_RUN);    // master enable
-//  while(I2C3_MCS_R&I2C_MCS_BUSY){};// wait for transmission done
-//                                          // check error bits
-//  if((I2C3_MCS_R&(I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)) != 0){
-//    I2C3_MCS_R = (0                // send stop if nonzero
-//                     //  & ~I2C_MCS_ACK     // no data ack (no data on send)
-//                       | I2C_MCS_STOP     // stop
-//                     //  & ~I2C_MCS_START   // no start/restart
-//                     //  & ~I2C_MCS_RUN    // master disable
-//                        );   
-//                                          // return error bits if nonzero
-//    return (I2C3_MCS_R&(I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
-//  }
-//  I2C3_MDR_R = data2&0xFF;         // prepare second byte
-//  I2C3_MCS_R = (0
-//                      // & ~I2C_MCS_ACK     // no data ack (no data on send)
-//                       | I2C_MCS_STOP     // generate stop
-//                      // & ~I2C_MCS_START   // no start/restart
-//                       | I2C_MCS_RUN);    // master enable
-//  while(I2C3_MCS_R&I2C_MCS_BUSY){};// wait for transmission done
-//                                          // return error bits
-//  return (I2C3_MCS_R&(I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
-//}
+// int I2C3_Send2b(int8_t slave, uint8_t data1, uint8_t data2){
+//   while(I2C3_MCS_R&I2C_MCS_BUSY){};// wait for I2C ready
+//   I2C3_MSA_R = (slave<<1)&0xFE;    // MSA[7:1] is slave address
+//   I2C3_MSA_R &= ~0x01;             // MSA[0] is 0 for send
+//   I2C3_MDR_R = data1&0xFF;         // prepare first byte
+//   I2C3_MCS_R = (0
+//                      //  & ~I2C_MCS_ACK     // no data ack (no data on send)
+//                     //   & ~I2C_MCS_STOP    // no stop
+//                        | I2C_MCS_START    // generate start/restart
+//                        | I2C_MCS_RUN);    // master enable
+//   while(I2C3_MCS_R&I2C_MCS_BUSY){};// wait for transmission done
+//                                           // check error bits
+//   if((I2C3_MCS_R&(I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)) != 0){
+//     I2C3_MCS_R = (0                // send stop if nonzero
+//                      //  & ~I2C_MCS_ACK     // no data ack (no data on send)
+//                        | I2C_MCS_STOP     // stop
+//                      //  & ~I2C_MCS_START   // no start/restart
+//                      //  & ~I2C_MCS_RUN    // master disable
+//                         );
+//                                           // return error bits if nonzero
+//     return (I2C3_MCS_R&(I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+//   }
+//   I2C3_MDR_R = data2&0xFF;         // prepare second byte
+//   I2C3_MCS_R = (0
+//                       // & ~I2C_MCS_ACK     // no data ack (no data on send)
+//                        | I2C_MCS_STOP     // generate stop
+//                       // & ~I2C_MCS_START   // no start/restart
+//                        | I2C_MCS_RUN);    // master enable
+//   while(I2C3_MCS_R&I2C_MCS_BUSY){};// wait for transmission done
+//                                           // return error bits
+//   return (I2C3_MCS_R&(I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+// }
 
-int I2C3_Send4(uint8_t slaveAddr, uint8_t data1, uint8_t data2, uint8_t data3, uint8_t data4){
-  while(I2C3_MCS_R & I2C_MCS_BUSY){};       // wait for I2C ready
-  I2C3_MSA_R = (slaveAddr << 1);            // MSA[7:1] is slave address
-                                            // MSA[0] is 0 for send
-    
+int I2C3_Send4(uint8_t slaveAddr, uint8_t data1, uint8_t data2, uint8_t data3, uint8_t data4)
+{
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  };                             // wait for I2C ready
+  I2C3_MSA_R = (slaveAddr << 1); // MSA[7:1] is slave address
+                                 // MSA[0] is 0 for send
+
   I2C3_MDR_R = data1;                       // prepare data byte
-  I2C3_MCS_R = I2C_MCS_RUN|I2C_MCS_START;   // run and start
-  while (I2C3_MCS_R & I2C_MCS_BUSY){};      // wait for transmission done
-  if((I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)) != 0){
-    I2C3_MCS_R = I2C_MCS_STOP;              // stop transmission
-       // return error bits if nonzero
-    return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+  I2C3_MCS_R = I2C_MCS_RUN | I2C_MCS_START; // run and start
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  }; // wait for transmission done
+  if ((I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR)) != 0)
+  {
+    I2C3_MCS_R = I2C_MCS_STOP; // stop transmission
+                               // return error bits if nonzero
+    return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
   }
   // second
-  I2C3_MDR_R = data2;                       // prepare data byte
-  I2C3_MCS_R = I2C_MCS_RUN;                 // master enable
-  while (I2C3_MCS_R & I2C_MCS_BUSY){};      // wait for transmission done
-      // check error bits
-  if((I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)) != 0){
-    I2C3_MCS_R = I2C_MCS_STOP;              // stop transmission
-       // return error bits if nonzero
-    return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+  I2C3_MDR_R = data2;       // prepare data byte
+  I2C3_MCS_R = I2C_MCS_RUN; // master enable
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  }; // wait for transmission done
+     // check error bits
+  if ((I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR)) != 0)
+  {
+    I2C3_MCS_R = I2C_MCS_STOP; // stop transmission
+                               // return error bits if nonzero
+    return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
   }
-   // third
-  I2C3_MDR_R = data3;                       // prepare data byte
-  I2C3_MCS_R = I2C_MCS_RUN;                 // master enable
-  while (I2C3_MCS_R & I2C_MCS_BUSY){};      // wait for transmission done
-      // check error bits
-  if((I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)) != 0){
-    I2C3_MCS_R = I2C_MCS_STOP;              // stop transmission
-       // return error bits if nonzero
-    return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+  // third
+  I2C3_MDR_R = data3;       // prepare data byte
+  I2C3_MCS_R = I2C_MCS_RUN; // master enable
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  }; // wait for transmission done
+     // check error bits
+  if ((I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR)) != 0)
+  {
+    I2C3_MCS_R = I2C_MCS_STOP; // stop transmission
+                               // return error bits if nonzero
+    return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
   }
-   // fourth      
-  I2C3_MDR_R = data4;                       // prepare last byte
-  I2C3_MCS_R = (I2C_MCS_STOP |              // generate stop
-                I2C_MCS_RUN);               // master enable
-  while (I2C3_MCS_R & I2C_MCS_BUSY) {};     // wait for transmission done
+  // fourth
+  I2C3_MDR_R = data4;          // prepare last byte
+  I2C3_MCS_R = (I2C_MCS_STOP | // generate stop
+                I2C_MCS_RUN);  // master enable
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  }; // wait for transmission done
   // return error bits
-  return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+  return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
 }
-
-
-
 
 // receives one byte from specified slave
 // Note for HMC6352 compass only:
@@ -253,166 +346,212 @@ int I2C3_Send4(uint8_t slaveAddr, uint8_t data1, uint8_t data2, uint8_t data3, u
 // Note for TMP102 thermometer only:
 // Used to read the top byte of the contents of the pointer register
 //  This will work but is probably not what you want to do.
-uint8_t I2C3_Recv1(int8_t slave){
+uint8_t I2C3_Recv1(int8_t slave)
+{
   int retryCounter = 1;
-  do{
-    while(I2C3_MCS_R&I2C_MCS_BUSY){};// wait for I2C ready
-    I2C3_MSA_R = (slave<<1)&0xFE;    // MSA[7:1] is slave address
-    I2C3_MSA_R |= 0x01;              // MSA[0] is 1 for receive
+  do
+  {
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    };                                // wait for I2C ready
+    I2C3_MSA_R = (slave << 1) & 0xFE; // MSA[7:1] is slave address
+    I2C3_MSA_R |= 0x01;               // MSA[0] is 1 for receive
     I2C3_MCS_R = (0
-                        // & ~I2C_MCS_ACK     // negative data ack (last byte)
-                         | I2C_MCS_STOP     // generate stop
-                         | I2C_MCS_START    // generate start/restart
-                         | I2C_MCS_RUN);    // master enable
-    while(I2C3_MCS_R&I2C_MCS_BUSY){};// wait for transmission done
-    retryCounter = retryCounter + 1;        // increment retry counter
-  }                                         // repeat if error
-  while(((I2C3_MCS_R&(I2C_MCS_ADRACK|I2C_MCS_ERROR)) != 0) && (retryCounter <= MAXRETRIES));
-  return (I2C3_MDR_R&0xFF);          // usually returns 0xFF on error
+                  // & ~I2C_MCS_ACK     // negative data ack (last byte)
+                  | I2C_MCS_STOP  // generate stop
+                  | I2C_MCS_START // generate start/restart
+                  | I2C_MCS_RUN); // master enable
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    };                               // wait for transmission done
+    retryCounter = retryCounter + 1; // increment retry counter
+  } // repeat if error
+  while (((I2C3_MCS_R & (I2C_MCS_ADRACK | I2C_MCS_ERROR)) != 0) && (retryCounter <= MAXRETRIES));
+  return (I2C3_MDR_R & 0xFF); // usually returns 0xFF on error
 }
-int I2C3_Recv(uint8_t slaveAddr, uint8_t *pData, uint32_t count){
-  while(I2C3_MCS_R & I2C_MCS_BUSY){};                    // wait for I2C ready
-  switch(count){
-    case 1:
-        I2C3_MSA_R = (slaveAddr << 1) & I2C_MSA_SA_M;    // MSA[7:1] is slave address
-        I2C3_MSA_R |= I2C_MSA_RS;                        // MSA[0] is 1 for receive
-              
-        I2C3_MCS_R = (I2C_MCS_STOP  |                    // generate stop
-                      I2C_MCS_START |                    // generate start/restart
-                      I2C_MCS_RUN);                      // master enable
-        while (I2C3_MCS_R & I2C_MCS_BUSY) {};            // wait for transmission done
-        pData[0] = (I2C3_MDR_R & I2C_MDR_DATA_M);        // usually 0xFF on error
-        break;
-    case 2:
-        I2C3_MSA_R = (slaveAddr << 1) & I2C_MSA_SA_M;    // MSA[7:1] is slave address
-        I2C3_MSA_R |= I2C_MSA_RS;                        // MSA[0] is 1 for receive
-            
-        I2C3_MCS_R = (I2C_MCS_ACK   |                    // positive data ack
-                      I2C_MCS_START |                    // generate start/restart
-                      I2C_MCS_RUN);                      // master enable
-        while (I2C3_MCS_R & I2C_MCS_BUSY) {};            // wait for transmission done
-        pData[0] = (I2C3_MDR_R & I2C_MDR_DATA_M);        // most significant byte
-              
-        I2C3_MCS_R = (I2C_MCS_STOP |                     // generate stop
-                      I2C_MCS_RUN);                      // master enable
-        while(I2C3_MCS_R & I2C_MCS_BUSY){};              // wait for transmission done
-        pData[1] = (I2C3_MDR_R & I2C_MDR_DATA_M);        // least significant byte                                                       // repeat if error
-        break;
-    default:
-        I2C3_MSA_R = (slaveAddr << 1) & I2C_MSA_SA_M;    // MSA[7:1] is slave address
-        I2C3_MSA_R |= I2C_MSA_RS;                        // MSA[0] is 1 for receive
-              
-        I2C3_MCS_R = (I2C_MCS_ACK   |                    // positive data ack
-                      I2C_MCS_START |                    // generate start/restart
-                      I2C_MCS_RUN);                      // master enable
-        while (I2C3_MCS_R & I2C_MCS_BUSY) {};            // wait for transmission done
-        pData[0] = (I2C3_MDR_R & I2C_MDR_DATA_M);        // most significant byte               
-        for(int i = 1; i < count-1; i++){
-          I2C3_MCS_R = (I2C_MCS_ACK |                    // positive data ack
-                        I2C_MCS_RUN);                    // master enable
-          while (I2C3_MCS_R & I2C_MCS_BUSY) {};          // wait for transmission done
-          pData[i] = (I2C3_MDR_R & I2C_MDR_DATA_M);      // read byte
-        }
-             
-        I2C3_MCS_R = (I2C_MCS_STOP |                     // generate stop
-                      I2C_MCS_RUN);                      // master enable
-        while (I2C3_MCS_R & I2C_MCS_BUSY) {};            // wait for transmission done
-        pData[count-1] = (I2C3_MDR_R & I2C_MDR_DATA_M);  // least significant byte
-        break;
+int I2C3_Recv(uint8_t slaveAddr, uint8_t *pData, uint32_t count)
+{
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  }; // wait for I2C ready
+  switch (count)
+  {
+  case 1:
+    I2C3_MSA_R = (slaveAddr << 1) & I2C_MSA_SA_M; // MSA[7:1] is slave address
+    I2C3_MSA_R |= I2C_MSA_RS;                     // MSA[0] is 1 for receive
+
+    I2C3_MCS_R = (I2C_MCS_STOP |  // generate stop
+                  I2C_MCS_START | // generate start/restart
+                  I2C_MCS_RUN);   // master enable
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    };                                        // wait for transmission done
+    pData[0] = (I2C3_MDR_R & I2C_MDR_DATA_M); // usually 0xFF on error
+    break;
+  case 2:
+    I2C3_MSA_R = (slaveAddr << 1) & I2C_MSA_SA_M; // MSA[7:1] is slave address
+    I2C3_MSA_R |= I2C_MSA_RS;                     // MSA[0] is 1 for receive
+
+    I2C3_MCS_R = (I2C_MCS_ACK |   // positive data ack
+                  I2C_MCS_START | // generate start/restart
+                  I2C_MCS_RUN);   // master enable
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    };                                        // wait for transmission done
+    pData[0] = (I2C3_MDR_R & I2C_MDR_DATA_M); // most significant byte
+
+    I2C3_MCS_R = (I2C_MCS_STOP | // generate stop
+                  I2C_MCS_RUN);  // master enable
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    };                                        // wait for transmission done
+    pData[1] = (I2C3_MDR_R & I2C_MDR_DATA_M); // least significant byte                                                       // repeat if error
+    break;
+  default:
+    I2C3_MSA_R = (slaveAddr << 1) & I2C_MSA_SA_M; // MSA[7:1] is slave address
+    I2C3_MSA_R |= I2C_MSA_RS;                     // MSA[0] is 1 for receive
+
+    I2C3_MCS_R = (I2C_MCS_ACK |   // positive data ack
+                  I2C_MCS_START | // generate start/restart
+                  I2C_MCS_RUN);   // master enable
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    };                                        // wait for transmission done
+    pData[0] = (I2C3_MDR_R & I2C_MDR_DATA_M); // most significant byte
+    for (int i = 1; i < count - 1; i++)
+    {
+      I2C3_MCS_R = (I2C_MCS_ACK | // positive data ack
+                    I2C_MCS_RUN); // master enable
+      while (I2C3_MCS_R & I2C_MCS_BUSY)
+      {
+      };                                        // wait for transmission done
+      pData[i] = (I2C3_MDR_R & I2C_MDR_DATA_M); // read byte
+    }
+
+    I2C3_MCS_R = (I2C_MCS_STOP | // generate stop
+                  I2C_MCS_RUN);  // master enable
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    };                                                // wait for transmission done
+    pData[count - 1] = (I2C3_MDR_R & I2C_MDR_DATA_M); // least significant byte
+    break;
   }
-  return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+  return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
 }
 // receives two bytes from specified slave
 // Note for HMC6352 compass only:
 // Used with 'A' commands
 // Note for TMP102 thermometer only:
 // Used to read the contents of the pointer register
-uint16_t I2C3_Recv2(int8_t slave){
-  uint8_t data1,data2;
+uint16_t I2C3_Recv2(int8_t slave)
+{
+  uint8_t data1, data2;
   int retryCounter = 1;
-  do{
-    while(I2C3_MCS_R&I2C_MCS_BUSY){};// wait for I2C ready
-    I2C3_MSA_R = (slave<<1)&0xFE;    // MSA[7:1] is slave address
-    I2C3_MSA_R |= 0x01;              // MSA[0] is 1 for receive
+  do
+  {
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    };                                // wait for I2C ready
+    I2C3_MSA_R = (slave << 1) & 0xFE; // MSA[7:1] is slave address
+    I2C3_MSA_R |= 0x01;               // MSA[0] is 1 for receive
+    I2C3_MCS_R = (0 | I2C_MCS_ACK     // positive data ack
+                                      //  & ~I2C_MCS_STOP    // no stop
+                  | I2C_MCS_START     // generate start/restart
+                  | I2C_MCS_RUN);     // master enable
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    };                           // wait for transmission done
+    data1 = (I2C3_MDR_R & 0xFF); // MSB data sent first
     I2C3_MCS_R = (0
-                         | I2C_MCS_ACK      // positive data ack
-                       //  & ~I2C_MCS_STOP    // no stop
-                         | I2C_MCS_START    // generate start/restart
-                         | I2C_MCS_RUN);    // master enable
-    while(I2C3_MCS_R&I2C_MCS_BUSY){};// wait for transmission done
-    data1 = (I2C3_MDR_R&0xFF);       // MSB data sent first
-    I2C3_MCS_R = (0
-                       //  & ~I2C_MCS_ACK     // negative data ack (last byte)
-                         | I2C_MCS_STOP     // generate stop
-                       //  & ~I2C_MCS_START   // no start/restart
-                         | I2C_MCS_RUN);    // master enable
-    while(I2C3_MCS_R&I2C_MCS_BUSY){};// wait for transmission done
-    data2 = (I2C3_MDR_R&0xFF);       // LSB data sent last
-    retryCounter = retryCounter + 1;        // increment retry counter
-  }                                         // repeat if error
-  while(((I2C3_MCS_R&(I2C_MCS_ADRACK|I2C_MCS_ERROR)) != 0) && (retryCounter <= MAXRETRIES));
-  return (data1<<8)+data2;                  // usually returns 0xFFFF on error
+                  //  & ~I2C_MCS_ACK     // negative data ack (last byte)
+                  | I2C_MCS_STOP  // generate stop
+                                  //  & ~I2C_MCS_START   // no start/restart
+                  | I2C_MCS_RUN); // master enable
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    };                               // wait for transmission done
+    data2 = (I2C3_MDR_R & 0xFF);     // LSB data sent last
+    retryCounter = retryCounter + 1; // increment retry counter
+  } // repeat if error
+  while (((I2C3_MCS_R & (I2C_MCS_ADRACK | I2C_MCS_ERROR)) != 0) && (retryCounter <= MAXRETRIES));
+  return (data1 << 8) + data2; // usually returns 0xFFFF on error
 }
 
-int I2C3_Recv3(uint8_t slaveAddr, uint8_t data[3]){
-  while(I2C3_MCS_R & I2C_MCS_BUSY){};         // wait for I2C ready
-  I2C3_MSA_R = (slaveAddr << 1)|I2C_MSA_RS;   // MSA[7:1] is slave address
+int I2C3_Recv3(uint8_t slaveAddr, uint8_t data[3])
+{
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  };                                          // wait for I2C ready
+  I2C3_MSA_R = (slaveAddr << 1) | I2C_MSA_RS; // MSA[7:1] is slave address
                                               // MSA[0] is 1 for receive
-// first              
-  I2C3_MCS_R = (I2C_MCS_ACK   |               // positive data ack
+                                              // first
+  I2C3_MCS_R = (I2C_MCS_ACK |                 // positive data ack
                 I2C_MCS_START |               // generate start/restart
                 I2C_MCS_RUN);                 // master enable
-  while (I2C3_MCS_R & I2C_MCS_BUSY) {};       // wait for transmission done
-  data[0] = I2C3_MDR_R ;                      // most significant byte               
- // second
-  I2C3_MCS_R = (I2C_MCS_ACK |                 // positive data ack
-                I2C_MCS_RUN);                 // master enable
-  while (I2C3_MCS_R & I2C_MCS_BUSY) {};       // wait for transmission done
-  data[1] = I2C3_MDR_R;                       // read byte
-// third     
-  I2C3_MCS_R = (I2C_MCS_STOP |                // generate stop
-                I2C_MCS_RUN);                 // master enable
-  while (I2C3_MCS_R & I2C_MCS_BUSY) {};       // wait for transmission done
-  data[2] = I2C3_MDR_R;                       // least significant byte
-  return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  };                          // wait for transmission done
+  data[0] = I2C3_MDR_R;       // most significant byte
+                              // second
+  I2C3_MCS_R = (I2C_MCS_ACK | // positive data ack
+                I2C_MCS_RUN); // master enable
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  };                           // wait for transmission done
+  data[1] = I2C3_MDR_R;        // read byte
+                               // third
+  I2C3_MCS_R = (I2C_MCS_STOP | // generate stop
+                I2C_MCS_RUN);  // master enable
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  };                    // wait for transmission done
+  data[2] = I2C3_MDR_R; // least significant byte
+  return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
 }
 
+int I2C3_SendData(uint8_t slaveAddr, uint8_t *pData, uint32_t count)
+{
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  };                           // wait for I2C ready
+  I2C3_MSA_R = slaveAddr << 1; // MSA[7:1] is slave address
+                               //  I2C3_MSA_R = (slaveAddr << 1) & I2C_MSA_SA_M;      // MSA[7:1] is slave address
+                               // I2C3_MSA_R &= ~I2C_MSA_RS;                         // MSA[0] is 0 for send
 
-int I2C3_SendData(uint8_t slaveAddr, uint8_t *pData, uint32_t count){
-  while(I2C3_MCS_R & I2C_MCS_BUSY){};                // wait for I2C ready
-  I2C3_MSA_R = slaveAddr << 1;      // MSA[7:1] is slave address
-//  I2C3_MSA_R = (slaveAddr << 1) & I2C_MSA_SA_M;      // MSA[7:1] is slave address
- // I2C3_MSA_R &= ~I2C_MSA_RS;                         // MSA[0] is 0 for send
-    
-
-  I2C3_MDR_R = 0x40;           // first byte 0x40 means data bytes
-  I2C3_MCS_R = I2C_MCS_RUN|I2C_MCS_START;           // run and start
-  while (I2C3_MCS_R & I2C_MCS_BUSY){};              // wait for transmission done
-//  if((I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)) != 0){
-//    I2C3_MCS_R = I2C_MCS_STOP;                      // stop transmission
-//     // return error bits if nonzero
-//    return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
-//  }
-  for(int i = 0; i < count-1; i++) {
-    I2C3_MDR_R = pData[i];         // prepare data byte
-//    I2C3_MDR_R = pData[i] & I2C_MDR_DATA_M;         // prepare data byte
-    I2C3_MCS_R = I2C_MCS_RUN;                       // master enable
-    while (I2C3_MCS_R & I2C_MCS_BUSY){};            // wait for transmission done
-//      // check error bits
-//    if((I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)) != 0){
-//      I2C3_MCS_R = I2C_MCS_STOP;                    // stop transmission
-//       // return error bits if nonzero
-//      return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
-//    }
-  }      
-  I2C3_MDR_R = pData[count-1];     // prepare last byte
-//  I2C3_MDR_R = pData[count-1] & I2C_MDR_DATA_M;     // prepare last byte
-  I2C3_MCS_R = (I2C_MCS_STOP |                      // generate stop
-                I2C_MCS_RUN);                       // master enable
-  while (I2C3_MCS_R & I2C_MCS_BUSY) {};             // wait for transmission done
+  I2C3_MDR_R = 0x40;                        // first byte 0x40 means data bytes
+  I2C3_MCS_R = I2C_MCS_RUN | I2C_MCS_START; // run and start
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  }; // wait for transmission done
+     //  if((I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)) != 0){
+     //    I2C3_MCS_R = I2C_MCS_STOP;                      // stop transmission
+     //     // return error bits if nonzero
+     //    return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+     //  }
+  for (int i = 0; i < count - 1; i++)
+  {
+    I2C3_MDR_R = pData[i];    // prepare data byte
+                              //    I2C3_MDR_R = pData[i] & I2C_MDR_DATA_M;         // prepare data byte
+    I2C3_MCS_R = I2C_MCS_RUN; // master enable
+    while (I2C3_MCS_R & I2C_MCS_BUSY)
+    {
+    }; // wait for transmission done
+       //      // check error bits
+       //    if((I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)) != 0){
+       //      I2C3_MCS_R = I2C_MCS_STOP;                    // stop transmission
+       //       // return error bits if nonzero
+       //      return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+       //    }
+  }
+  I2C3_MDR_R = pData[count - 1]; // prepare last byte
+                                 //  I2C3_MDR_R = pData[count-1] & I2C_MDR_DATA_M;     // prepare last byte
+  I2C3_MCS_R = (I2C_MCS_STOP |   // generate stop
+                I2C_MCS_RUN);    // master enable
+  while (I2C3_MCS_R & I2C_MCS_BUSY)
+  {
+  }; // wait for transmission done
   // return error bits
-  return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
-
+  return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
 }
 
 // Performs an I2C block read following the CAP11xx block read protocol
@@ -425,46 +564,56 @@ int I2C3_SendData(uint8_t slaveAddr, uint8_t *pData, uint32_t count){
 //   Data returned in *pData
 int I2C3_BlockRead(uint8_t slaveAddr, uint8_t reg, uint8_t *pData, uint32_t count)
 {
-    // -------- WRITE REGISTER ADDRESS --------
-    if(I2C3_WaitBusy() != 0) return -1;     // wait ready
-    I2C3_MSA_R = (slaveAddr << 1);           // SLA+W
-    I2C3_MDR_R = reg;                        // register address
-    I2C3_MCS_R = I2C_MCS_START | I2C_MCS_RUN;   // send START + reg
-    if(I2C3_WaitBusy() != 0) return -1;
+  // -------- WRITE REGISTER ADDRESS --------
+  if (I2C3_WaitBusy() != 0)
+    return -1;                              // wait ready
+  I2C3_MSA_R = (slaveAddr << 1);            // SLA+W
+  I2C3_MDR_R = reg;                         // register address
+  I2C3_MCS_R = I2C_MCS_START | I2C_MCS_RUN; // send START + reg
+  if (I2C3_WaitBusy() != 0)
+    return -1;
 
-    if(I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR)){
-        I2C3_MCS_R = I2C_MCS_STOP;           // STOP on error
-        return -1;
-    }
+  if (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR))
+  {
+    I2C3_MCS_R = I2C_MCS_STOP; // STOP on error
+    while(I2C3_MCS_R & I2C_MCS_BUSY);
+    return -1;
+  }
 
-    // -------- REPEATED START, SWITCH TO READ --------
-    I2C3_MSA_R = (slaveAddr << 1) | 1;        // SLA+R
+  // -------- REPEATED START, SWITCH TO READ --------
+  I2C3_MSA_R = (slaveAddr << 1) | 1; // SLA+R
 
-    if(count == 1){
-        I2C3_MCS_R = I2C_MCS_START | I2C_MCS_STOP | I2C_MCS_RUN;  // single byte → NACK + STOP
-        if(I2C3_WaitBusy() != 0) return -1;
-        pData[0] = I2C3_MDR_R;
-        return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
-    }
-
-    // first byte with ACK
-    I2C3_MCS_R = I2C_MCS_START | I2C_MCS_ACK | I2C_MCS_RUN;  
-    if(I2C3_WaitBusy() != 0) return -1;
+  if (count == 1)
+  {
+    I2C3_MCS_R = I2C_MCS_START | I2C_MCS_STOP | I2C_MCS_RUN; // single byte → NACK + STOP
+    if (I2C3_WaitBusy() != 0)
+      return -1;
     pData[0] = I2C3_MDR_R;
+    return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
+  }
 
-    // middle bytes
-    for(uint32_t i=1; i < count-1; i++){
-        I2C3_MCS_R = I2C_MCS_ACK | I2C_MCS_RUN;   // ACK
-        if(I2C3_WaitBusy() != 0) return -1;
-        pData[i] = I2C3_MDR_R;
-    }
+  // first byte with ACK
+  I2C3_MCS_R = I2C_MCS_START | I2C_MCS_ACK | I2C_MCS_RUN;
+  if (I2C3_WaitBusy() != 0)
+    return -1;
+  pData[0] = I2C3_MDR_R;
 
-    // last byte → NACK + STOP
-    I2C3_MCS_R = I2C_MCS_STOP | I2C_MCS_RUN;  
-    if(I2C3_WaitBusy() != 0) return -1;
-    pData[count-1] = I2C3_MDR_R;
+  // middle bytes
+  for (uint32_t i = 1; i < count - 1; i++)
+  {
+    I2C3_MCS_R = I2C_MCS_ACK | I2C_MCS_RUN; // ACK
+    if (I2C3_WaitBusy() != 0)
+      return -1;
+    pData[i] = I2C3_MDR_R;
+  }
 
-    return (I2C3_MCS_R & (I2C_MCS_DATACK|I2C_MCS_ADRACK|I2C_MCS_ERROR));
+  // last byte → NACK + STOP
+  I2C3_MCS_R = I2C_MCS_STOP | I2C_MCS_RUN;
+  if (I2C3_WaitBusy() != 0)
+    return -1;
+  pData[count - 1] = I2C3_MDR_R;
+
+  return (I2C3_MCS_R & (I2C_MCS_DATACK | I2C_MCS_ADRACK | I2C_MCS_ERROR));
 }
 
 // Performs an I2C block write:
@@ -472,49 +621,61 @@ int I2C3_BlockRead(uint8_t slaveAddr, uint8_t reg, uint8_t *pData, uint32_t coun
 // Returns 0 on success, nonzero on error.
 int I2C3_BlockWrite(uint8_t slaveAddr, uint8_t reg, const uint8_t *data, uint32_t len)
 {
-    // --- 1. SETUP TRANSACTION ---
-    if(I2C3_WaitBusy() != 0) return -1;      
-    I2C3_MSA_R = (slaveAddr << 1);           // SLA+W
-    I2C3_MDR_R = reg;                        // Load Register address
+  // --- 1. SETUP TRANSACTION ---
+  if (I2C3_WaitBusy() != 0)
+    return -1;
+  I2C3_MSA_R = (slaveAddr << 1); // SLA+W
+  I2C3_MDR_R = reg;              // Load Register address
 
-    // --- 2. HANDLE ZERO LENGTH (Set Pointer Only) ---
-    // If no data is coming, we must STOP immediately after the register address
-    if (len == 0) {
-        I2C3_MCS_R = I2C_MCS_START | I2C_MCS_RUN | I2C_MCS_STOP;
-        if(I2C3_WaitBusy() != 0) return -1;
-        return (I2C3_MCS_R & (I2C_MCS_ERROR | I2C_MCS_ADRACK | I2C_MCS_DATACK));
+  // --- 2. HANDLE ZERO LENGTH (Set Pointer Only) ---
+  // If no data is coming, we must STOP immediately after the register address
+  if (len == 0)
+  {
+    I2C3_MCS_R = I2C_MCS_START | I2C_MCS_RUN | I2C_MCS_STOP;
+    if (I2C3_WaitBusy() != 0)
+      return -1;
+    return (I2C3_MCS_R & (I2C_MCS_ERROR | I2C_MCS_ADRACK | I2C_MCS_DATACK));
+  }
+
+  // --- 3. START TRANSACTION (Address + Register) ---
+  // If we HAVE data, do NOT send Stop yet.
+  I2C3_MCS_R = I2C_MCS_START | I2C_MCS_RUN;
+  if (I2C3_WaitBusy() != 0)
+    return -1;
+
+  // Check for errors (NACK on address or register write)
+  if (I2C3_MCS_R & (I2C_MCS_ERROR | I2C_MCS_ADRACK | I2C_MCS_DATACK))
+  {
+    I2C3_MCS_R = I2C_MCS_STOP; // Emergency Stop
+    while(I2C3_MCS_R & I2C_MCS_BUSY);
+    return -1;
+  }
+
+  // --- 4. WRITE DATA BYTES ---
+  for (uint32_t i = 0; i < len; i++)
+  {
+    I2C3_MDR_R = data[i];
+
+    // If last byte -> Send STOP
+    if (i == len - 1)
+    {
+      I2C3_MCS_R = I2C_MCS_RUN | I2C_MCS_STOP;
+    }
+    else
+    {
+      I2C3_MCS_R = I2C_MCS_RUN;
     }
 
-    // --- 3. START TRANSACTION (Address + Register) ---
-    // If we HAVE data, do NOT send Stop yet.
-    I2C3_MCS_R = I2C_MCS_START | I2C_MCS_RUN; 
-    if(I2C3_WaitBusy() != 0) return -1;
+    if (I2C3_WaitBusy() != 0)
+      return -1;
 
-    // Check for errors (NACK on address or register write)
-    if(I2C3_MCS_R & (I2C_MCS_ERROR | I2C_MCS_ADRACK | I2C_MCS_DATACK)){
-        I2C3_MCS_R = I2C_MCS_STOP; // Emergency Stop
-        return -1;
+    // Check for errors (NACK on data byte)
+    if (I2C3_MCS_R & (I2C_MCS_ERROR | I2C_MCS_ADRACK | I2C_MCS_DATACK))
+    {
+      I2C3_MCS_R = I2C_MCS_STOP;
+      return -2;
     }
+  }
 
-    // --- 4. WRITE DATA BYTES ---
-    for(uint32_t i = 0; i < len; i++){
-        I2C3_MDR_R = data[i];
-
-        // If last byte -> Send STOP
-        if(i == len - 1){
-            I2C3_MCS_R = I2C_MCS_RUN | I2C_MCS_STOP;
-        } else {
-            I2C3_MCS_R = I2C_MCS_RUN;
-        }
-
-        if(I2C3_WaitBusy() != 0) return -1;
-
-        // Check for errors (NACK on data byte)
-        if(I2C3_MCS_R & (I2C_MCS_ERROR | I2C_MCS_ADRACK | I2C_MCS_DATACK)){
-            I2C3_MCS_R = I2C_MCS_STOP; 
-            return -2;
-        }
-    }
-
-    return 0;   // success
+  return 0; // success
 }

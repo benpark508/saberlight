@@ -410,8 +410,6 @@ if(s != 0){
   ST7735_SetCursor(0, 12);
   ST7735_OutString("Swing: ");
 
-  Music_Play();
-
   while (1)
   {
     if (printflag)
@@ -446,9 +444,11 @@ if(s != 0){
       ST7735_SetCursor(7, 12);
       if(MPU6500_DetectSwing(&imu_proc)){
         ST7735_OutString("YES");
+        Music_Play();
       }
       else{
         ST7735_OutString("NO");
+        Music_Stop();
       }
       ST7735_OutString("  ");
     }

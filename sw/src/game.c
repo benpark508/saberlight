@@ -1,9 +1,16 @@
+// Game.c
+// Game Engine logic for Light Saber Duel
+// Integrated with Non-Blocking LED and Interrupt-Driven UART
+// Runs on TM4C123
+// Fall 2025
+
 #include <stdint.h>
 #include "../inc/tm4c123gh6pm.h"
 #include "../inc/ST7735.h"
-#include "UART4.h"  
+#include "UART4.h"   
 #include "Game.h"
 #include "music.h"
+#include "lightstrip.h" 
 #include "../inc/mpu6500.h"
 #include "../inc/cap1208.h"
 
@@ -17,7 +24,9 @@ int EnemyLives = MAX_LIVES;
 
 // Touch sensor data
 int8_t touch_counts[4]; // Array for C1-C4
-static uint8_t last_touch_state = 0;
+// Track the previous touch state to handle rising edges
+// 0 = Idle, 1 = Hitting
+static uint8_t last_touch_state = 0; 
 
 // --- HELPER FUNCTIONS ---
 
@@ -34,14 +43,6 @@ void Draw_UI(void) {
     ST7735_OutString("  \n"); 
 }
 
-// Check UART4 for incoming data
-char Check_Network(void) {
-    if((UART4_FR_R & 0x10) == 0) {
-        return (char)(UART4_DR_R & 0xFF);
-    }
-    return 0;
-}
-
 // --- MAIN INIT ---
 void Game_Init(void) {
     MyLives = MAX_LIVES;
@@ -50,150 +51,154 @@ void Game_Init(void) {
     
     ST7735_FillScreen(ST7735_BLACK);
     Draw_UI();
+    
+    // Set initial LED state
+    Lightstrip_SetAnimation(ANIM_OFF);
 }
 
 // --- MAIN LOOP ---
+// Assumed to be called every 1ms by the main while(1) loop
 void Game_Run(void) {
     
-    // Performance Throttling for LCD
-    // We run Game_Run every 1ms. We only want to draw to LCD every ~100ms
+    // --- TIMING VARIABLES ---
     static uint32_t lcd_timer = 0;
-    uint8_t update_screen = 0;
-    lcd_timer++;
-    if(lcd_timer > 100) {
-        lcd_timer = 0;
-        update_screen = 1;
+    static uint32_t touch_timer = 0;
+    static uint32_t led_timer = 0;
+    
+    // ----------------------------------------
+    // 1. LIGHTSTRIP SCHEDULER (Every ~20ms)
+    // ----------------------------------------
+    led_timer++;
+    if(led_timer > 20) {
+        led_timer = 0;
+        Lightstrip_Update(); 
     }
 
-    // 1. READ TOUCH INPUTS (Tube Logic)
-    // We only read touch every 50ms to save I2C overhead
-    static uint32_t touch_timer = 0;
+    // ----------------------------------------
+    // 2. SENSOR INPUT & STATE LOGIC (Every ~50ms)
+    // ----------------------------------------
     touch_timer++;
-    
-    uint8_t current_touch_state = 0;
     
     if(touch_timer > 50) {
         touch_timer = 0;
-        CAP1208_ReadCounts(touch_counts); // Reads C1-C4 into array
         
-        // Tube Logic: Sum of C1 (Index 0) and C7 (Index 1) >= 100
-        if(touch_counts[0] + touch_counts[1] >= 100) {
-            current_touch_state = 1;
-        }
-    } else {
-        current_touch_state = last_touch_state; // Maintain state between reads
-    }
-    
-    // 2. CHECK NETWORK (INCOMING DAMAGE)
-    char incoming = Check_Network();
-    
-    if (incoming == 'h') {
-        if (CurrentState == GAME_BLOCK) {
-            // SUCCESSFUL BLOCK!
-            Sound_Clash(); 
-        } 
-        else if (CurrentState == GAME_FIGHT || CurrentState == GAME_START) {
-            // WE TOOK DAMAGE
-            Sound_Damage();
-            MyLives--;
-            if (MyLives <= 0) {
-                UART4_OutChar('x'); // Tell enemy I died
-                CurrentState = GAME_LOSE;
-            }
-        }
-    }
-    else if (incoming == 'x') {
-        CurrentState = GAME_WIN;
-    }
-
-    // 3. STATE MACHINE
-    switch(CurrentState) {
+        // --- A. READ SENSORS ---
         
-        // ============= START =============
-        case GAME_START:
-            if(update_screen) ST7735_OutString("Ready...");
-            Sound_ImperialMarch(); 
-            if(!Music_IsPlaying()){
-                 CurrentState = GAME_FIGHT;
-                 ST7735_FillScreen(ST7735_BLACK); 
-                 Draw_UI();
-            }
-            break;
+        // NEW: Update IMU Data so DetectSwing has fresh values
+        raw_imu imu_raw; 
+        MPU6500_getData(&imu_raw, &imu_proc);
 
-        // ============= FIGHT =============
-        case GAME_FIGHT:
-            if(update_screen) {
-                Draw_UI();
-                ST7735_SetTextColor(ST7735_GREEN);
-                ST7735_SetCursor(5, 5);
-                ST7735_OutString("FIGHT   ");
-            }
+        // Read Touch Sensors
+        CAP1208_ReadCounts(touch_counts); 
+        int touch_sum = touch_counts[0] + touch_counts[1];
+        uint8_t current_touch_state = 0;
 
-            // COND 1: SWITCH TO BLOCK (Rising Edge)
-            if (current_touch_state == 1 && last_touch_state == 0) { 
-                Sound_Block(); 
-                CurrentState = GAME_BLOCK;
-            }
-            // COND 1b: Sustain Block
-            else if (current_touch_state == 1) {
-                CurrentState = GAME_BLOCK;
-            }
+        // --- B. DETERMINE TOUCH STATE ---
+        // Simplified: Either we hit (>= 100) or we didn't.
+        if (touch_sum >= 100) {
+            current_touch_state = 1; // Hitting Enemy
+        } else {
+            current_touch_state = 0; // Idle
+        }
+
+        // --- C. PROCESS HITS (Only if game is active) ---
+        if (CurrentState == GAME_FIGHT) {
             
-            // COND 2: ATTACK (SWING)
-            // DetectSwing is fast, so we check it every cycle (1ms)
-            else if (MPU6500_DetectSwing(&imu_proc)) {
-                if (!Music_IsPlaying()) {
-                    Sound_Swing();
-                    UART4_OutChar('h'); // Send 'h' to opponent
+            // IMPACT / HITTING ENEMY
+            if (current_touch_state == 1) {
+                // Rising edge detection (only trigger once per hit)
+                if (last_touch_state == 0) { 
+                    UART4_OutChar('h'); // Send 'h' to tell enemy they were hit
+                    Sound_Clash();      // Play impact sound locally
+                    Lightstrip_SetAnimation(ANIM_HIT); // Visual flash
                 }
             }
-            break;
+        }
+        
+        // Update history
+        last_touch_state = current_touch_state;
 
-        // ============= BLOCKING =============
-        case GAME_BLOCK:
-            if(update_screen) {
-                Draw_UI();
-                ST7735_SetTextColor(ST7735_BLUE);
-                ST7735_SetCursor(5, 5);
-                ST7735_OutString("BLOCKING");
+        // --- D. SWING DETECTION ---
+        // Only detect swings in FIGHT mode 
+        if (CurrentState == GAME_FIGHT && current_touch_state == 0) {
+             // Now imu_proc contains the data fetched above
+             if (MPU6500_DetectSwing(&imu_proc)) {
+                if (!Music_IsPlaying()) {
+                    Sound_Swing();
+                    // NO UART SENT HERE (per requirements)
+                }
             }
+        }
+    }
+
+    // ----------------------------------------
+    // 3. NETWORK HANDLER (Incoming Packets)
+    // ----------------------------------------
+    char incoming;
+    
+    while(UART4_GetPacket(&incoming)) {
+        
+        if (incoming == 'h') { // 'h' = Opponent says they hit me
             
-            // COND 1: RELEASE BLOCK
-            if (current_touch_state == 0) {
-                CurrentState = GAME_FIGHT;
+            // No blocking check anymore. If they hit me, I take damage.
+            if (CurrentState == GAME_FIGHT || CurrentState == GAME_START) {
+                // --- TOOK DAMAGE ---
+                Sound_Damage();
+                Lightstrip_SetAnimation(ANIM_DAMAGED); // Red Flash/Flicker
+                
+                MyLives--;
+                if (MyLives <= 0) {
+                    UART4_OutChar('x'); // Tell enemy I died
+                    CurrentState = GAME_LOSE;
+                    Lightstrip_SetAnimation(ANIM_LOSE); 
+                }
             }
-            break;
+        }
+        else if (incoming == 'x') { // 'x' = Opponent Died
+            CurrentState = GAME_WIN;
+            Lightstrip_SetAnimation(ANIM_WIN); 
+        }
+    }
 
-        // ============= WIN =============
-        case GAME_WIN:
-            if(update_screen) {
-                ST7735_FillScreen(ST7735_GREEN);
-                ST7735_SetCursor(5, 5);
-                ST7735_SetTextColor(ST7735_BLACK);
-                ST7735_OutString("VICTORY!");
-            }
-            Sound_Victory();
-            CurrentState = GAME_OVER;
-            break;
-
-        // ============= LOSE =============
-        case GAME_LOSE:
-            if(update_screen) {
-                ST7735_FillScreen(ST7735_RED);
-                ST7735_SetCursor(5, 5);
-                ST7735_SetTextColor(ST7735_BLACK);
-                ST7735_OutString("DEFEAT");
-            }
-            Sound_Lose();
-            CurrentState = GAME_OVER;
-            break;
-
-        // ============= OVER =============
-        case GAME_OVER:
-            break;
+    // ----------------------------------------
+    // 4. GAME STATE HOUSEKEEPING
+    // ----------------------------------------
+    // Handle non-combat states
+    if (CurrentState == GAME_START) {
+        if(!Music_IsPlaying()){
+             CurrentState = GAME_FIGHT;
+             Lightstrip_SetAnimation(ANIM_IDLE); 
+             ST7735_FillScreen(ST7735_BLACK); 
+             Draw_UI();
+        }
     }
     
-    last_touch_state = current_touch_state;
+    // ----------------------------------------
+    // 5. LCD UPDATE (Every ~100ms)
+    // ----------------------------------------
+    lcd_timer++;
+    if(lcd_timer > 100) {
+        lcd_timer = 0;
+        
+        if(CurrentState == GAME_FIGHT) {
+             Draw_UI();
+             ST7735_SetTextColor(ST7735_GREEN);
+             ST7735_SetCursor(5, 5);
+             ST7735_OutString("FIGHT   ");
+        } else if(CurrentState == GAME_WIN) {
+             ST7735_FillScreen(ST7735_GREEN);
+             ST7735_SetCursor(5, 5);
+             ST7735_SetTextColor(ST7735_BLACK);
+             ST7735_OutString("VICTORY!");
+             lcd_timer = 0; // stop updating
+        } else if(CurrentState == GAME_LOSE) {
+             ST7735_FillScreen(ST7735_RED);
+             ST7735_SetCursor(5, 5);
+             ST7735_SetTextColor(ST7735_BLACK);
+             ST7735_OutString("DEFEAT  ");
+             lcd_timer = 0; // stop updating
+        }
+    }
 }
 
 GameState_t Game_GetState(void) {

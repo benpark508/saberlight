@@ -35,21 +35,6 @@ int Fifo_Put(char data){
     return 1;
 }
 
-void UART4_Flush(void){
-    long sr = StartCritical();
-    
-    // 1. Reset Software FIFO
-    Fifo_Init();
-    
-    // 2. Drain Hardware FIFO
-    // Loop until the "Receive FIFO Empty" flag (Bit 4) is set
-    while((UART4_FR_R & 0x10) == 0){
-        volatile uint32_t trash = UART4_DR_R; // Read and discard
-    }
-    
-    EndCritical(sr);
-}
-
 int Fifo_Get(char *datapt){
     if(RxFifoCount == 0){
         return 0; // FIFO Empty (Fail)
@@ -91,21 +76,46 @@ void UART4_Init(void){
     UART4_LCRH_R = 0x70;     // 8-bit, FIFO enable
     
     // 4. INTERRUPT SETUP
-    UART4_IM_R |= 0x10;      // Enable RX Interrupt (Bit 4)
+    // Enable RX Interrupt (Bit 4) and RX Timeout Interrupt (Bit 6)
+    // RTIM (Bit 6) is crucial so single bytes trigger an interrupt immediately
+    UART4_IM_R |= 0x50;      
     
     // UART4 is IRQ 60 (Vector 76)
-    // Priority 2 (Bits 13-15 of PRI15)
-    NVIC_PRI15_R = (NVIC_PRI15_R & 0xFF00FFFF) | 0x400000; 
+    // Priority 2 (Bits 5-7 of PRI15)
+    // NVIC_PRI15 covers IRQ 60-63. IRQ 60 is in bits [7:5].
+    // Priority 2 = binary 010. Shifted to [7:5] = 0100 0000 = 0x40.
+    // Clear bits 7-0 (0xFFFFFF00) and set bit 6 (0x40)
+    NVIC_PRI15_R = (NVIC_PRI15_R & 0xFFFFFF00) | 0x00000040; 
+    
     NVIC_EN1_R = 1 << 28;    // Enable IRQ 60 (Bit 28 of EN1)
 
-    UART4_CTL_R |= 0x01;     // Enable UART
+    // Enable UART (Bit 0), TX Enable (Bit 8), RX Enable (Bit 9)
+    UART4_CTL_R |= 0x301;     
+}
+
+// Use this during game reset to clear old 'hits'
+void UART4_Flush(void){
+    long sr = StartCritical();
+    
+    // 1. Reset Software FIFO
+    Fifo_Init();
+    
+    // 2. Drain Hardware FIFO
+    // Loop until the "Receive FIFO Empty" flag (Bit 4) is set
+    while((UART4_FR_R & 0x10) == 0){
+        volatile uint32_t trash = UART4_DR_R; // Read and discard
+    }
+    
+    EndCritical(sr);
 }
 
 // The ISR - This runs automatically when data arrives
 void UART4_Handler(void){
-    // Check if RX interrupt occurred
-    if(UART4_RIS_R & 0x10){
-        UART4_ICR_R = 0x10; // Acknowledge/Clear flag
+    // Check for RX Interrupt (Bit 4) or Receiver Timeout (Bit 6)
+    // 0x50 = RXRIS | RTRIS
+    if(UART4_RIS_R & 0x50){ 
+        // Acknowledge/Clear flags for both RX and Time-out
+        UART4_ICR_R = 0x50; 
         
         // Read all available bytes from Hardware FIFO
         while((UART4_FR_R & 0x10) == 0){ // While RXFE is 0 (FIFO not empty)

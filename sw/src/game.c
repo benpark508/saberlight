@@ -85,7 +85,7 @@ void Game_Run(void) {
         
         // --- A. READ SENSORS ---
         
-        // NEW: Update IMU Data so DetectSwing has fresh values
+        // Update IMU Data so DetectSwing has fresh values
         raw_imu imu_raw; 
         MPU6500_getData(&imu_raw, &imu_proc);
 
@@ -112,6 +112,15 @@ void Game_Run(void) {
                     UART4_OutChar('H'); // Send 'h' to tell enemy they were hit
                     Sound_Clash();      // Play impact sound locally
                     Lightstrip_SetAnimation(ANIM_HIT); // Visual flash
+                    
+                    // --- NEW WIN LOGIC ---
+                    // Decrement Enemy lives locally because we know we hit them
+                    EnemyLives--;
+                    
+                    if(EnemyLives <= 0) {
+                        CurrentState = GAME_WIN;
+                        Lightstrip_SetAnimation(ANIM_WIN);
+                    }
                 }
             }
         }
@@ -122,7 +131,6 @@ void Game_Run(void) {
         // --- D. SWING DETECTION ---
         // Only detect swings in FIGHT mode 
         if (CurrentState == GAME_FIGHT && current_touch_state == 0) {
-             // Now imu_proc contains the data fetched above
              if (MPU6500_DetectSwing(&imu_proc)) {
                 if (!Music_IsPlaying()) {
                     Sound_Swing();
@@ -141,7 +149,7 @@ void Game_Run(void) {
         
         if (incoming == 'h') { // 'h' = Opponent says they hit me
             
-            // No blocking check anymore. If they hit me, I take damage.
+            // If they hit me, I take damage.
             if (CurrentState == GAME_FIGHT || CurrentState == GAME_START) {
                 // --- TOOK DAMAGE ---
                 Sound_Damage();
@@ -149,16 +157,13 @@ void Game_Run(void) {
                 
                 MyLives--;
                 if (MyLives <= 0) {
-                    UART4_OutChar('x'); // Tell enemy I died
+                    // Removed sending 'x'. Enemy tracks their own win condition now.
                     CurrentState = GAME_LOSE;
                     Lightstrip_SetAnimation(ANIM_LOSE); 
                 }
             }
         }
-        else if (incoming == 'x') { // 'x' = Opponent Died
-            CurrentState = GAME_WIN;
-            Lightstrip_SetAnimation(ANIM_WIN); 
-        }
+        // Removed checking for 'x'. We rely on local EnemyLives count (see section 2.C above).
     }
 
     // ----------------------------------------

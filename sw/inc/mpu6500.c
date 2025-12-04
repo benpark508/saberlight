@@ -21,8 +21,8 @@ static void WaitForSSI0Idle(void)
     };
 }
 
-#define FILTER_SIZE 10
-#define GYRO_DEADBAND_MDPS 200
+#define FILTER_SIZE 5
+#define GYRO_DEADBAND_MDPS 2000
 
 static int32_t accel_history[3][FILTER_SIZE] = {0};
 static int32_t accel_sum[3] = {0};
@@ -32,13 +32,13 @@ static int32_t gyro_sum[3] = {0};
 
 static uint8_t filter_idx = 0;
 
-#define SWING_START_DPS 300
+#define SWING_START_DPS 30
 #define SWING_START_SQ (SWING_START_DPS * SWING_START_DPS)
 
-#define SWING_STOP_DPS 200
+#define SWING_STOP_DPS 20
 #define SWING_STOP_SQ (SWING_STOP_DPS * SWING_STOP_DPS)
 
-#define SWING_COOLDOWN_CYCLES 10
+#define SWING_COOLDOWN_CYCLES 3
 
 static uint8_t is_swinging_state = 0;
 static int32_t cooldown_timer = 0;
@@ -155,7 +155,7 @@ void MPU6500_Init(void)
     // Configure Digital Low Pass Filter
     select_IMU();
     xchg_spi(CONFIG | MPU_WRITE);
-    xchg_spi(0x03);
+    xchg_spi(0x01);
     deselect_IMU();
 
     // Set Accel range to 8g
@@ -167,7 +167,7 @@ void MPU6500_Init(void)
     // Set Gyro range to 500dps
     select_IMU();
     xchg_spi(GYRO_CONFIG | MPU_WRITE);
-    xchg_spi(0x08);
+    xchg_spi(0x18);
     deselect_IMU();
 
     WaitForSSI0Idle();
@@ -229,16 +229,13 @@ void MPU6500_calibrate(processed_imu *proc)
 }
 
 #define ACCEL_SCALE_FACTOR 4096
-#define GYRO_SCALE_FACTOR 65
-#define DT_MS 100
-#define ALPHA 980
+#define GYRO_SCALE_FACTOR 16
 
 void MPU6500_ProcessData(raw_imu *raw, processed_imu *proc)
 {
     int32_t raw_accel_mg[3];
     int32_t raw_gyro_mdps[3];
 
-    // Convert raw values to milli-units using scale factors
     raw_accel_mg[0] = ((int32_t)(raw->accel_x - proc->accel_off_x) * 1000) / ACCEL_SCALE_FACTOR;
     raw_gyro_mdps[0] = ((int32_t)(raw->gyro_x - proc->gyro_off_x) * 1000) / GYRO_SCALE_FACTOR;
 
@@ -248,33 +245,29 @@ void MPU6500_ProcessData(raw_imu *raw, processed_imu *proc)
     raw_accel_mg[2] = ((int32_t)(raw->accel_z - proc->accel_off_z) * 1000) / ACCEL_SCALE_FACTOR;
     raw_gyro_mdps[2] = ((int32_t)(raw->gyro_z - proc->gyro_off_z) * 1000) / GYRO_SCALE_FACTOR;
 
-    // Apply moving average filter and deadband
     for (int i = 0; i < 3; i++)
     {
+        // Accel Smoothing (Gravity)
         accel_sum[i] -= accel_history[i][filter_idx];
         accel_history[i][filter_idx] = raw_accel_mg[i];
         accel_sum[i] += raw_accel_mg[i];
 
-        // Apply deadband to gyroscope to eliminate stationary drift
+        // Deadband (Noise Removal)
         if (raw_gyro_mdps[i] < GYRO_DEADBAND_MDPS && raw_gyro_mdps[i] > -GYRO_DEADBAND_MDPS)
         {
             raw_gyro_mdps[i] = 0;
         }
-
-        gyro_sum[i] -= gyro_history[i][filter_idx];
-        gyro_history[i][filter_idx] = raw_gyro_mdps[i];
-        gyro_sum[i] += raw_gyro_mdps[i];
     }
 
     proc->accel_x_mg = accel_sum[0] / FILTER_SIZE;
     proc->accel_y_mg = accel_sum[1] / FILTER_SIZE;
     proc->accel_z_mg = accel_sum[2] / FILTER_SIZE;
 
-    proc->gyro_x_mdps = gyro_sum[0] / FILTER_SIZE;
-    proc->gyro_y_mdps = gyro_sum[1] / FILTER_SIZE;
-    proc->gyro_z_mdps = gyro_sum[2] / FILTER_SIZE;
+    // Direct Pass-through for Gyro (No smoothing lag)
+    proc->gyro_x_mdps = raw_gyro_mdps[0];
+    proc->gyro_y_mdps = raw_gyro_mdps[1];
+    proc->gyro_z_mdps = raw_gyro_mdps[2];
 
-    // Update circular buffer index
     filter_idx++;
     if (filter_idx >= FILTER_SIZE)
     {

@@ -42,4 +42,16 @@ void Music_Pause(void);
 // Outputs: none
 void Music_Stop(void);
 
+uint8_t Music_IsPlaying(void);
+
+void Sound_ImperialMarch(void); // The Theme
+void Sound_SaberOff(void);      // Retraction (Lose/End)
+void Sound_Clash(void);         // Hit/Block
+void Sound_Block(void);
+void Sound_Hum(void);
+void Sound_Victory(void);
+void Sound_Lose(void);
+void Sound_Damage(void);
+void Sound_Swing(void);
+
 #endif // MUSIC_H

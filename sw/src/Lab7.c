@@ -406,6 +406,9 @@ if(s != 0){
 
   ST7735_SetCursor(0, 10); // Line 6
   ST7735_OutString("az: ");
+  
+  ST7735_SetCursor(0, 12);
+  ST7735_OutString("Swing: ");
 
   Music_Play();
 
@@ -428,13 +431,25 @@ if(s != 0){
       ST7735_OutString("   ");
 
       ST7735_SetCursor(7, 6);
-      ST7735_OutSDec16(imu_proc.accel_x_mg);
+      //ST7735_OutSDec16(imu_proc.accel_x_mg);
+      ST7735_OutSDec16(imu_proc.gyro_x_mdps);
       ST7735_OutString("  ");
       ST7735_SetCursor(7, 8);
-      ST7735_OutSDec16(imu_proc.accel_y_mg);
+      //ST7735_OutSDec16(imu_proc.accel_y_mg);
+      ST7735_OutSDec16(imu_proc.gyro_y_mdps);
       ST7735_OutString("  ");
       ST7735_SetCursor(7, 10);
-      ST7735_OutSDec16(imu_proc.accel_z_mg);
+      //ST7735_OutSDec16(imu_proc.accel_z_mg);
+      ST7735_OutSDec16(imu_proc.gyro_z_mdps);
+      ST7735_OutString("  ");
+      
+      ST7735_SetCursor(7, 12);
+      if(MPU6500_DetectSwing(&imu_proc)){
+        ST7735_OutString("YES");
+      }
+      else{
+        ST7735_OutString("NO");
+      }
       ST7735_OutString("  ");
     }
   }

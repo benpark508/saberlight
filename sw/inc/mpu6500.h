@@ -67,5 +67,6 @@ void MPU6500_read_accel(raw_imu *imu_raw_data);
 void MPU6500_read_gyro(raw_imu *imu_raw_data);
 void MPU6500_getData(raw_imu *rData, processed_imu *pData);
 void MPU6500_calibrate(processed_imu *imu_processed_data);
+uint8_t MPU6500_DetectSwing(processed_imu *proc);
 
 #endif // __MPU6500_H__

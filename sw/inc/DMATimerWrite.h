@@ -41,7 +41,7 @@
  http://users.ece.utexas.edu/~valvano/
  */
 
-
+#include <stdint.h>
 
 // ************DMA_Init*****************
 // Main program must initialize used for destination

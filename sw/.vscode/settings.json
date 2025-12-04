@@ -23,6 +23,8 @@
         "st7735.h": "c",
         "diskio.h": "c",
         "integer.h": "c",
-        "ffconf.h": "c"
+        "ffconf.h": "c",
+        "music.h": "c",
+        "dmatimerwrite.h": "c"
     }
 }

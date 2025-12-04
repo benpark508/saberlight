@@ -18,6 +18,10 @@
 #include "../inc/SPI.h"
 #include "../inc/ST7735.h"
 #include "../inc/Timer1A.h"
+#include "../inc/Timer2A.h"
+#include "ESP8266.h"
+#include "UART4.h"
+#include "lightstrip.h"
 #include "music.h"
 
 void DisableInterrupts(void); // Disable interrupts
@@ -34,23 +38,27 @@ void WaitForInterrupt(void);  // Go into low power mode
 
 raw_imu imu_raw;
 processed_imu imu_proc;
-volatile uint8_t printflag = 0;
+volatile uint8_t cap_read = 0;
+volatile uint8_t imu_read = 0;
 uint8_t touch = 0;
 int8_t count = 0;
 extern volatile uint8_t go;
 static int8_t last_count = 0;
 
-void debug_serial(void)
+void READ_CAP(void)
 {
-  printflag = 1;
+  cap_read = 1;
+}
+
+void READ_IMU(void)
+{
+  imu_read = 1;
 }
 
 int main(void)
 {
   DisableInterrupts();
   Unified_Port_Init();
-  UINT successfulreads, successfulwrites;
-  uint8_t c, x, y;
   PLL_Init(Bus80MHz); // bus clock at 80 MHz
   SysTick_Init();
   SPI_Init(200); // initialize SSI0 at 400 kHz
@@ -59,91 +67,45 @@ int main(void)
   long sr = StartCritical();
   MPU6500_calibrate(&imu_proc);
   EndCritical(sr);
-  ST7735_InitR(INITR_GREENTAB);           // initialize LCD
-  Timer1A_Init(debug_serial, 8000000, 2); // print every 100 ms
+  ST7735_InitR(INITR_GREENTAB);      // initialize LCD
+  Timer1A_Init(READ_CAP, 800000, 4); // call every 10 ms
+  Timer2A_Init(READ_IMU, 80000, 1);  // call every 1 ms
   Music_Init();
+  Lightstrip_Init();
+  ESP8266_Init();		// ESP stuff
+	UART4_Init();
+	ESP8266_Reset();
 
   EnableInterrupts();
 
-  ST7735_FillScreen(ST7735_BLACK);
-  ST7735_SetCursor(0, 0);
-  ST7735_OutString("cap1208 demo");
-
-  ST7735_SetCursor(0, 2); // Line 2
-  ST7735_OutString("Delta: ");
-
-  ST7735_SetCursor(0, 4); // Line 2
-  ST7735_OutString("Touch: ");
-
-  ST7735_SetCursor(0, 6); // Line 2
-  ST7735_OutString("ax: ");
-
-  ST7735_SetCursor(0, 8); // Line 4
-  ST7735_OutString("ay: ");
-
-  ST7735_SetCursor(0, 10); // Line 6
-  ST7735_OutString("az: ");
-
-  ST7735_SetCursor(0, 12);
-  ST7735_OutString("Swing: ");
+  Blade_R = 255;
+  Blade_G = 0;
+  Blade_B = 0;
+  char c;
 
   while (1)
   {
-    if (printflag)
+    if (imu_read)
     {
-      printflag = 0;
-
-      ST7735_SetCursor(7, 4);
-      ST7735_OutString("NO");
-      ST7735_OutString("       ");
-
-      CAP1208_ReadCount(1, &count);
-      
-      if(count == 127 && last_count != 127 && !Music_IsPlaying()){
-        Sound_Block();
-      }
-      
-      // Update history for the next loop
-      last_count = count;
-
+      imu_read = 0;
       MPU6500_getData(&imu_raw, &imu_proc);
 
-      ST7735_SetCursor(7, 2);
-      ST7735_OutSDec8(count);
-      ST7735_OutString("       ");
-
-      ST7735_SetCursor(7, 6);
-      // ST7735_OutSDec16(imu_proc.accel_x_mg);
-      ST7735_OutSDec16(imu_proc.gyro_x_mdps);
-      ST7735_OutString("        ");
-      ST7735_SetCursor(7, 8);
-      // ST7735_OutSDec16(imu_proc.accel_y_mg);
-      ST7735_OutSDec16(imu_proc.gyro_y_mdps);
-      ST7735_OutString("        ");
-      ST7735_SetCursor(7, 10);
-      // ST7735_OutSDec16(imu_proc.accel_z_mg);
-      ST7735_OutSDec16(imu_proc.gyro_z_mdps);
-      ST7735_OutString("        ");
-
-      ST7735_SetCursor(7, 12);
-
-      uint8_t isSwinging = MPU6500_DetectSwing(&imu_proc);
-      uint8_t isSoundPlaying = Music_IsPlaying();
-
-      if (isSwinging)
+      if (MPU6500_DetectSwing(&imu_proc) && !Music_IsPlaying())
       {
-        ST7735_OutString("YES");
-        if (!isSoundPlaying)
-        {
-          Sound_Swing();
-        }
+        Sound_Swing();
       }
-      else
-      {
-        ST7735_OutString("NO ");
-      }
+    }
 
-      ST7735_OutString("        ");
+    if (cap_read)
+    {
+      cap_read = 0;
+
+      CAP1208_ReadCount(1, &count);
+      if (count == 127 && last_count != 127 && !Music_IsPlaying())
+      {
+        Sound_Block();
+      }
+      last_count = count;
     }
   }
 }

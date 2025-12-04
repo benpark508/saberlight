@@ -469,6 +469,31 @@
               <FileType>1</FileType>
               <FilePath>..\inc\ff.c</FilePath>
             </File>
+            <File>
+              <FileName>lightstrip.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\lightstrip.c</FilePath>
+            </File>
+            <File>
+              <FileName>Timer2A.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\Timer2A.c</FilePath>
+            </File>
+            <File>
+              <FileName>DMATimerWrite.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\inc\DMATimerWrite.c</FilePath>
+            </File>
+            <File>
+              <FileName>ESP8266.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ESP8266.c</FilePath>
+            </File>
+            <File>
+              <FileName>UART4.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\UART4.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

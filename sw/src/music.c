@@ -11,7 +11,7 @@
     
 #define F_CPU 80000000
 
-/*
+
 //  A 32-element sine wave table for sound generation.
 const uint16_t SineWave[32] = {
   2048, 2447, 2831, 3185, 3495, 3750, 3939, 4056,
@@ -19,9 +19,9 @@ const uint16_t SineWave[32] = {
   2048, 1649, 1265,  911,  601,  346,  157,   40,
      0,   40,  157,  346,  601,  911, 1265, 1649
 };
-*/
 
 
+/*
 // A 32-element sine wave table at ~10% amplitude (Quiet)
 const uint16_t SineWave[32] = {
   2048, 2088, 2126, 2162, 2193, 2218, 2237, 2249,
@@ -29,6 +29,7 @@ const uint16_t SineWave[32] = {
   2048, 2008, 1970, 1934, 1903, 1878, 1859, 1847,
   1843, 1847, 1859, 1878, 1903, 1934, 1970, 2008
 };
+*/
 
 uint32_t SineWaveIndex; //  Index that steps through the sine wave table
 

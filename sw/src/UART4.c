@@ -35,6 +35,21 @@ int Fifo_Put(char data){
     return 1;
 }
 
+void UART4_Flush(void){
+    long sr = StartCritical();
+    
+    // 1. Reset Software FIFO
+    Fifo_Init();
+    
+    // 2. Drain Hardware FIFO
+    // Loop until the "Receive FIFO Empty" flag (Bit 4) is set
+    while((UART4_FR_R & 0x10) == 0){
+        volatile uint32_t trash = UART4_DR_R; // Read and discard
+    }
+    
+    EndCritical(sr);
+}
+
 int Fifo_Get(char *datapt){
     if(RxFifoCount == 0){
         return 0; // FIFO Empty (Fail)

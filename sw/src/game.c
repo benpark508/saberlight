@@ -8,7 +8,7 @@
 #include "../inc/tm4c123gh6pm.h"
 #include "../inc/ST7735.h"
 #include "UART4.h"   
-#include "Game.h"
+#include "game.h"
 #include "music.h"
 #include "lightstrip.h" 
 #include "../inc/mpu6500.h"
@@ -45,6 +45,7 @@ void Draw_UI(void) {
 
 // --- MAIN INIT ---
 void Game_Init(void) {
+    UART4_Flush();
     MyLives = MAX_LIVES;
     EnemyLives = MAX_LIVES;
     CurrentState = GAME_START;
@@ -108,7 +109,7 @@ void Game_Run(void) {
             if (current_touch_state == 1) {
                 // Rising edge detection (only trigger once per hit)
                 if (last_touch_state == 0) { 
-                    UART4_OutChar('h'); // Send 'h' to tell enemy they were hit
+                    UART4_OutChar('H'); // Send 'h' to tell enemy they were hit
                     Sound_Clash();      // Play impact sound locally
                     Lightstrip_SetAnimation(ANIM_HIT); // Visual flash
                 }

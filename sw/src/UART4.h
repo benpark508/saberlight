@@ -32,6 +32,8 @@
 // Outputs: none
 void UART4_Init(void);
 
+void UART4_Flush(void);
+
 //------------UART4_OutChar------------
 // Output 8-bit to serial port
 // Input: letter is an 8-bit ASCII character to be transferred

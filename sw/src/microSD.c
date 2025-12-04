@@ -16,6 +16,40 @@ FATFS FS;
 static FIL bmpFile;        // Static prevents Stack Overflow
 static uint8_t bmpHeader[54]; 
 
+// lives = index (0..9), string = BMP filename
+static const char * const P1LifeScreens[10] = {
+    "p11.BMP",  // 0 lives
+    "p12.BMP",  // 1 life
+    "p13.BMP",
+    "p14.BMP",
+    "p15.BMP",
+    "p16.BMP",
+    "p17.BMP",
+    "p18.BMP",
+    "p19.BMP",
+    "p110.BMP"   // 9 lives
+};
+
+static const char * const P2LifeScreens[10] = {
+    "p21.BMP",
+    "p22.BMP",
+    "p23.BMP",
+    "p24.BMP",
+    "p25.BMP",
+    "p26.BMP",
+    "p27.BMP",
+    "p28.BMP",
+    "p29.BMP",
+    "p210.BMP"
+};
+
+
+// Other “static” screens
+static const char * const StartScreenBMP = "START.BMP";
+static const char * const WinScreenBMP   = "WIN.BMP";
+static const char * const LoseScreenBMP  = "LOSE.BMP";
+
+
 // --- THE STREAMING FUNCTION ---
 void LCD_DrawBMP(const char *filename, uint8_t x_pos, uint8_t y_pos) {
     FRESULT res;
@@ -192,3 +226,44 @@ if(s != 0){
   }
 	 f_mount(&FS, "0:", 1);
 }
+
+
+
+
+//----------------------- LCD Output --------------------------
+void LCD_Start(void) {
+    ST7735_FillScreen(0);
+    LCD_DrawBMP(StartScreenBMP, 0, 0);
+}
+
+void LCD_Win(void) {
+    ST7735_FillScreen(0);
+    LCD_DrawBMP(WinScreenBMP, 0, 0);
+}
+
+void LCD_Lose(void) {
+    ST7735_FillScreen(0);
+    LCD_DrawBMP(LoseScreenBMP, 0, 0);
+}
+
+void LCD_ShowLives(uint8_t player, uint8_t lives) {
+    if (lives == 0) {
+        // optional: show lose screen or a special "0 life" screen
+        LCD_Lose();
+        return;
+    }
+    if (lives > 10) lives = 10;   // clamp just in case
+
+    uint8_t idx = lives - 1;      // 10?0, 1?9
+
+    const char *file;
+    if (player == 1) {
+        file = P1LifeScreens[idx];
+    } else {
+        file = P2LifeScreens[idx];
+    }
+
+    ST7735_FillScreen(0);
+    LCD_DrawBMP(file, 0, 0);
+}
+

@@ -131,6 +131,7 @@ void Game_Run(void)
 
                     if (EnemyLives <= 0)
                     {
+                        LCD_Win();
                         CurrentState = GAME_WIN;
                         Lightstrip_SetAnimation(ANIM_WIN);
                     }
@@ -175,9 +176,11 @@ void Game_Run(void)
                 Lightstrip_SetAnimation(ANIM_DAMAGED); // Red Flash/Flicker
 
                 MyLives--;
+                LCD_ShowLives(1, MyLives);
                 if (MyLives <= 0)
                 {
                     // Removed sending 'x'. Enemy tracks their own win condition now.
+                    LCD_Lose();
                     CurrentState = GAME_LOSE;
                     Lightstrip_SetAnimation(ANIM_LOSE);
                 }
@@ -192,12 +195,12 @@ void Game_Run(void)
     // Handle non-combat states
     if (CurrentState == GAME_START)
     {
-        LCD_DrawBMP("start.bmp", 0, 0);
+        LCD_Start();
         Sound_ImperialMarch();
         CurrentState = GAME_FIGHT;
         Lightstrip_SetAnimation(ANIM_IDLE);
-        ST7735_FillScreen(ST7735_BLACK);
-        Draw_UI();
+        SD_Init();
+        LCD_DrawBMP("p110.bmp", 0, 0);
     }
 
     // ----------------------------------------
@@ -210,25 +213,25 @@ void Game_Run(void)
 
         if (CurrentState == GAME_FIGHT)
         {
-            Draw_UI();
+            /*Draw_UI();
             ST7735_SetTextColor(ST7735_GREEN);
             ST7735_SetCursor(5, 5);
-            ST7735_OutString("FIGHT   ");
+            ST7735_OutString("FIGHT   ");*/
         }
         else if (CurrentState == GAME_WIN)
         {
-            ST7735_FillScreen(ST7735_GREEN);
+            /*ST7735_FillScreen(ST7735_GREEN);
             ST7735_SetCursor(5, 5);
             ST7735_SetTextColor(ST7735_BLACK);
-            ST7735_OutString("VICTORY!");
+            ST7735_OutString("VICTORY!");*/
             lcd_timer = 0; // stop updating
         }
         else if (CurrentState == GAME_LOSE)
         {
-            ST7735_FillScreen(ST7735_RED);
+            /*ST7735_FillScreen(ST7735_RED);
             ST7735_SetCursor(5, 5);
             ST7735_SetTextColor(ST7735_BLACK);
-            ST7735_OutString("DEFEAT  ");
+            ST7735_OutString("DEFEAT  ");*/
             lcd_timer = 0; // stop updating
         }
     }

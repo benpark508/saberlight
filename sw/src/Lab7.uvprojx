@@ -499,6 +499,11 @@
               <FileType>1</FileType>
               <FilePath>.\states.c</FilePath>
             </File>
+            <File>
+              <FileName>microSD.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\microSD.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

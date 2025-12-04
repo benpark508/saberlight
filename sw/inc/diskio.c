@@ -13,6 +13,7 @@
 // converted to TM4C123
 // Feb 22, 2016
 // added PB0 as a choice for SDC CS
+// Modified Fall 2025: Fixed Timer4 Initialization
 #include <stdint.h>
 #include "../inc/tm4c123gh6pm.h"
 #include "../inc/integer.h"
@@ -45,26 +46,13 @@
 // CS   - PA3 TFT_CS, active low to enable TFT
 // *CS  - PD7/PB0 SDC_CS, active low to enable SDC
 // MISO - PA4 MISO SPI data from SDC to microcontroller
-// SDA  � (NC) I2C data for ADXL345 accelerometer
-// SCL  � (NC) I2C clock for ADXL345 accelerometer
-// SDO  � (NC) I2C alternate address for ADXL345 accelerometer
+// SDA   (NC) I2C data for ADXL345 accelerometer
+// SCL   (NC) I2C clock for ADXL345 accelerometer
+// SDO   (NC) I2C alternate address for ADXL345 accelerometer
 // Backlight + - Light, backlight connected to +3.3 V
-
-// void MakeTxhigh(void){
-//   GPIO_PORTA_AFSEL_R &= ~0x10;          // disable alt funct on PA4
-//   GPIO_PORTA_PCTL_R = (GPIO_PORTA_PCTL_R&0xFFF0FFFF);
-//   GPIO_PORTA_DATA_R |= 0x10;            // PA4 high
-// }
-// void MakeTxSSI(void){
-//   GPIO_PORTA_AFSEL_R |= 0x10;           // enable alt funct on PA4
-//   GPIO_PORTA_PCTL_R = (GPIO_PORTA_PCTL_R&0xFFF0FFFF)+0x000F0000;
-// }
 
 #define MMC_CD 1 /* Card detect (yes:true, no:false, default:true) */
 #define MMC_WP 0 /* Write protected (yes:true, no:false, default:false) */
-// #define  SPIx_CR1  SPI1_CR1
-// #define  SPIx_SR    SPI1_SR
-// #define  SPIx_DR    SPI1_DR
 
 /*--------------------------------------------------------------------------
 
@@ -156,7 +144,7 @@ static int xmit_datablock(const BYTE *buff, BYTE token)
 
   xchg_spi(token); /* Send token */
   if (token != 0xFD)
-  {                            /* Send data if token is other than StopTran */
+  {                                /* Send data if token is other than StopTran */
     xmit_spi_multi(buff, 512); /* Data */
     xchg_spi(0xFF);
     xchg_spi(0xFF); /* Dummy CRC */
@@ -277,7 +265,7 @@ DSTATUS disk_initialize(BYTE drv)
         cmd = CMD1; /* MMCv3 (CMD1(0)) */
       }
       while (Timer1 && send_cmd(cmd, 0))
-        ;                                       /* Wait for end of initialization */
+        ;                                               /* Wait for end of initialization */
       if (!Timer1 || send_cmd(CMD16, 512) != 0) /* Set block length: 512 */
         ty = 0;
     }
@@ -329,7 +317,7 @@ DRESULT disk_read(BYTE drv, BYTE *buff, DWORD sector, UINT count)
     sector *= 512; /* LBA ot BA conversion (byte addressing cards) */
 
   if (count == 1)
-  {                                    /* Single sector read */
+  {                                        /* Single sector read */
     if ((send_cmd(CMD17, sector) == 0) /* READ_SINGLE_BLOCK */
         && rcvr_datablock(buff, 512))
       count = 0;
@@ -375,7 +363,7 @@ DRESULT disk_write(BYTE drv, const BYTE *buff, DWORD sector, UINT count)
     sector *= 512; /* LBA ==> BA conversion (byte addressing cards) */
 
   if (count == 1)
-  {                                    /* Single sector write */
+  {                                        /* Single sector write */
     if ((send_cmd(CMD24, sector) == 0) /* WRITE_BLOCK */
         && xmit_datablock(buff, 0xFE))
       count = 0;
@@ -495,7 +483,7 @@ DRESULT disk_ioctl(BYTE drv, BYTE cmd, void *buff)
       ed *= 512;
     }
     if (send_cmd(CMD32, st) == 0 && send_cmd(CMD33, ed) == 0 && send_cmd(CMD38, 0) == 0 && wait_ready(30000)) /* Erase sector block */
-      res = RES_OK;                                                                                           /* FatFs does not check result of this command */
+      res = RES_OK;                                                                                             /* FatFs does not check result of this command */
     break;
 
   default:
@@ -540,26 +528,32 @@ void disk_timerproc(void)
 
 void Timer4_Init(void)
 {
-  SYSCTL_RCGCTIMER_R |= 0x20;
-  while ((SYSCTL_PRTIMER_R & 0x20) == 0)
-  {
-  };
-  TIMER4_CTL_R = 0x00000000;                               // 1) disable timer5 during setup
-  TIMER4_CFG_R = 0x00000000;                               // 2) configure for 32-bit mode
-  TIMER4_TAMR_R = 0x00000002;                              // 3) configure for periodic mode, default down-count settings
-  TIMER4_TAILR_R = 79999;                                  // 4) reload value, 1 ms, 80 MHz clock
-  TIMER4_TAPR_R = 0;                                       // 5) bus clock resolution
-  TIMER4_ICR_R = 0x00000001;                               // 6) clear timer5A timeout flag
-  TIMER4_IMR_R = 0x00000001;                               // 7) arm timeout interrupt
-  NVIC_PRI23_R = (NVIC_PRI23_R & 0xFFFFFF00) | 0x00000040; // 8) priority 2
-                                                           // interrupts enabled in the main program after all devices initialized
-                                                           // vector number 108, interrupt number 92
-  NVIC_EN2_R = 0x10000000;                                 // 9) enable interrupt 92 in NVIC
-  TIMER4_CTL_R = 0x00000001;                               // 10) enable timer5A
+  volatile uint32_t delay;
+  // 0) activate TIMER4
+  SYSCTL_RCGCTIMER_R |= 0x10;
+  // allow time to finish activating
+  delay = SYSCTL_RCGCTIMER_R;
+  TIMER4_CTL_R = 0x00000000;  // 1) disable TIMER4A during setup
+  TIMER4_CFG_R = 0x00000000;  // 2) configure for 32-bit mode
+  TIMER4_TAMR_R = 0x00000002; // 3) configure for periodic mode, default down-count settings
+  TIMER4_TAILR_R = 79999;     // 4) reload value, 1 ms, 80 MHz clock
+  TIMER4_TAPR_R = 0;          // 5) bus clock resolution
+  TIMER4_ICR_R = 0x00000001;  // 6) clear TIMER4A timeout flag
+  TIMER4_IMR_R = 0x00000001;  // 7) arm timeout interrupt
+
+  // 8) priority 2
+  // Vector number 86, interrupt number 70
+  // NVIC_PRI17_R covers interrupts 68-71. Int 70 is in bits 23:21
+  NVIC_PRI17_R = (NVIC_PRI17_R & 0xFF00FFFF) | 0x00400000;
+
+  // 9) enable interrupt 70 in NVIC (70-64=6)
+  NVIC_EN2_R = 0x00000040;
+
+  TIMER4_CTL_R = 0x00000001; // 10) enable TIMER4A
 }
 // Executed every 1 ms
 void Timer4A_Handler(void)
 {
-  TIMER4_ICR_R = 0x00000001; // acknowledge timer5A timeout
+  TIMER4_ICR_R = 0x00000001; // acknowledge TIMER4A timeout
   disk_timerproc();
 }

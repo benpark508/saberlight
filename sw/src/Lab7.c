@@ -23,6 +23,7 @@
 #include "game.h"
 #include "lightstrip.h"
 #include "music.h"
+#include "microSD.h"
 
 void DisableInterrupts(void); // Disable interrupts
 void EnableInterrupts(void);  // Enable interrupts
@@ -60,7 +61,7 @@ int main(void)
 
   SPI_Init(200); // initialize SSI0 at 400 kHz
   UART4_Init();
-  Timer2A_Init(run_game, 80000, 1); // call every 1 ms
+  Timer2A_Init(run_game, 80000, 2); // call every 1 ms
 
   CAP1208_Init();
   MPU6500_Init();
@@ -90,6 +91,10 @@ int main(void)
 
   // 8. Start Everything
   EnableInterrupts();
+
+  SD_Init();
+
+  FCLK_FAST();
 
   while (1)
   {
